@@ -49,16 +49,24 @@ gb3 = GraphBuilder()
 gb3.add_process(px("red chip", "4 wire + 2 green chip + 2 plastic", duration=6), "red chip")
 gb3.add_process(px("green chip", "3 wire + iron plate", duration=0.5), "green chip")
 gb3.add_process(px("2 wire", "copper plate", duration=0.5), "wire")
+gb3.add_process(px("2 plastic", "coal + 20 petrol"), "plastic (chemplant)")
 
 gb3.connect_named("wire", "wire", "green chip")
 gb3.connect_named("wire", "wire", "red chip")
 gb3.connect_named("green chip", "green chip", "red chip")
+gb3.connect_named("plastic", "plastic (chemplant)", "red chip")
 
 gb3.add_process(px("copper plate"), "copper plate src")
 gb3.connect_named("copper plate", "copper plate src", "wire")
 
-gb3.add_process(px("plastic"), "plastic src")
-gb3.connect_named("plastic", "plastic src", "red chip")
+gb3.add_process(px("petrol"), "petrol src")
+gb3.connect_named("petrol", "petrol src", "plastic (chemplant)")
+
+gb3.add_process(px("coal"), "coal src")
+gb3.connect_named("coal", "coal src", "plastic (chemplant)")
+
+gb3.add_process(px(None, "10 red chip"), "red chip sink")
+gb3.connect_named("red chip", "red chip", "red chip sink")
 
 mr3 = gb3.build_matrix()
-result3 = solve_milp(mr3["matrix"], mr3["processes"], max_leak=1)
+result3 = list(best_milp_sequence(mr3["matrix"], mr3["processes"]))
