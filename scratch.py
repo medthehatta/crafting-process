@@ -1,8 +1,8 @@
-from main import GraphBuilder
-from main import Ingredients
-from main import Process
-from main import solve_milp
-from main import best_milp_sequence
+from graph import GraphBuilder
+from process import Ingredients
+from process import Process
+from solver import solve_milp
+from solver import best_milp_sequence
 
 
 def px(outs=None, ins=None, duration=1, **kwargs):
