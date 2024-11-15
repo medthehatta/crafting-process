@@ -16,6 +16,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "coolname" },
+    { name = "cytoolz" },
     { name = "formal-vector" },
     { name = "numpy" },
     { name = "scipy" },
@@ -24,9 +25,68 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "coolname", specifier = ">=2.2.0" },
+    { name = "cytoolz", specifier = ">=1.0.0" },
     { name = "formal-vector", editable = "../formal-vector" },
     { name = "numpy", specifier = ">=2.1.3" },
     { name = "scipy", specifier = ">=1.14.1" },
+]
+
+[[package]]
+name = "cytoolz"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "toolz" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e2/4c/ca9b05bdfa28ddbb4a5365c27021a1d4be61db7d8f6b4e5d4e76aa4ba3b7/cytoolz-1.0.0.tar.gz", hash = "sha256:eb453b30182152f9917a5189b7d99046b6ce90cdf8aeb0feff4b2683e600defd", size = 626708 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4b/77/2afed35b93fdc38c4565ae79aca6b6149d0ea2fc4eeeca9b0adf9da04b9e/cytoolz-1.0.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:ecf5a887acb8f079ab1b81612b1c889bcbe6611aa7804fd2df46ed310aa5a345", size = 403505 },
+    { url = "https://files.pythonhosted.org/packages/a8/dc/6b5af6932b656213883557dcc6b1f843ec302dc02fec4b75bf1356b938f9/cytoolz-1.0.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:ef0ef30c1e091d4d59d14d8108a16d50bd227be5d52a47da891da5019ac2f8e4", size = 383918 },
+    { url = "https://files.pythonhosted.org/packages/2e/8c/d42dc240cda418b8241541c240c4696cf99475141c4d58fbe89b8c39bac1/cytoolz-1.0.0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:7df2dfd679f0517a96ced1cdd22f5c6c6aeeed28d928a82a02bf4c3fd6fd7ac4", size = 1934558 },
+    { url = "https://files.pythonhosted.org/packages/ff/74/af7863cc407ebf535aec9adf0cb72bbac2f036ec2550726d4d8ab00eb41c/cytoolz-1.0.0-cp310-cp310-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:8c51452c938e610f57551aa96e34924169c9100c0448bac88c2fb395cbd3538c", size = 2015123 },
+    { url = "https://files.pythonhosted.org/packages/01/98/83a0d9051e56e0b26a290439bd15b696c431c91d1dca384370cf9b23f04a/cytoolz-1.0.0-cp310-cp310-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:6433f03910c5e5345d82d6299457c26bf33821224ebb837c6b09d9cdbc414a6c", size = 2000496 },
+    { url = "https://files.pythonhosted.org/packages/d1/2d/ea68ba5d9c07f5d6cdb8ef85ec92f1a573deaad998807d035d2ef71aeb00/cytoolz-1.0.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:389ec328bb535f09e71dfe658bf0041f17194ca4cedaacd39bafe7893497a819", size = 1957529 },
+    { url = "https://files.pythonhosted.org/packages/7d/f3/e5b6b7128412bcb8d58c5cbd5a785befdc2c633502653937be41a54b2037/cytoolz-1.0.0-cp310-cp310-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:c64658e1209517ce4b54c1c9269a508b289d8d55fc742760e4b8579eacf09a33", size = 1863322 },
+    { url = "https://files.pythonhosted.org/packages/ee/ff/534c227de78e9c45c6e764b46830640f73390b7fe5dd39556cd4de4fd3b8/cytoolz-1.0.0-cp310-cp310-musllinux_1_2_aarch64.whl", hash = "sha256:f6039a9bd5bb988762458b9ca82b39e60ca5e5baae2ba93913990dcc5d19fa88", size = 1849933 },
+    { url = "https://files.pythonhosted.org/packages/ef/a9/7a51c084ceba8809f18aacb0bae86caf02aa5d5ebe5d5465819228a690d0/cytoolz-1.0.0-cp310-cp310-musllinux_1_2_i686.whl", hash = "sha256:85c9c8c4465ed1b2c8d67003809aec9627b129cb531d2f6cf0bbfe39952e7e4d", size = 1852341 },
+    { url = "https://files.pythonhosted.org/packages/ae/01/9b00fa8956c6b76ffd72fc896b2ba4e06165d7f90e03cf4ff253a4282d01/cytoolz-1.0.0-cp310-cp310-musllinux_1_2_ppc64le.whl", hash = "sha256:49375aad431d76650f94877afb92f09f58b6ff9055079ef4f2cd55313f5a1b39", size = 1989871 },
+    { url = "https://files.pythonhosted.org/packages/30/5a/3857a60ce3083d083fffcac13938ae045d22ee0a55f88b83a22443132e5d/cytoolz-1.0.0-cp310-cp310-musllinux_1_2_s390x.whl", hash = "sha256:4c45106171c824a61e755355520b646cb35a1987b34bbf5789443823ee137f63", size = 1994484 },
+    { url = "https://files.pythonhosted.org/packages/6c/3d/8585a635ebeba67f234f7779926519fda732399dd875b7cdff2cb2a3bff7/cytoolz-1.0.0-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:3b319a7f0fed5db07d189db4046162ebc183c108df3562a65ba6ebe862d1f634", size = 1896072 },
+    { url = "https://files.pythonhosted.org/packages/4c/3f/9f208381c12d2c8437ea09eef56f12c6f44af74ef5bc7546ca4fb099979e/cytoolz-1.0.0-cp310-cp310-win32.whl", hash = "sha256:9770e1b09748ad0d751853d994991e2592a9f8c464a87014365f80dac2e83faa", size = 322319 },
+    { url = "https://files.pythonhosted.org/packages/d7/95/cbc120ba4f70f874481f6ec650d26c265db1645fb5285a81e589d5831073/cytoolz-1.0.0-cp310-cp310-win_amd64.whl", hash = "sha256:20194dd02954c00c1f0755e636be75a20781f91a4ac9270c7f747e82d3c7f5a5", size = 363803 },
+    { url = "https://files.pythonhosted.org/packages/bc/99/b489081777ad02c9bba294c757583416d0bdbd9403017145aba68145c16f/cytoolz-1.0.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:dffc22fd2c91be64dbdbc462d0786f8e8ac9a275cfa1869a1084d1867d4f67e0", size = 406148 },
+    { url = "https://files.pythonhosted.org/packages/b2/d3/a4d58bf89924dbca34e8dbb643b26935e08c16b4a2ee255d43a8b7489939/cytoolz-1.0.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:a99e7e29274e293f4ffe20e07f76c2ac753a78f1b40c1828dfc54b2981b2f6c4", size = 384956 },
+    { url = "https://files.pythonhosted.org/packages/81/d4/4d09e6571ef3b143f668c590a7a00c97ff24e6df6901f457ea7c782cd2ba/cytoolz-1.0.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c507a3e0a45c41d66b43f96797290d75d1e7a8549aa03a4a6b8854fdf3f7b8d8", size = 2091688 },
+    { url = "https://files.pythonhosted.org/packages/8d/7b/68c89bed2e0490e9b946574c3bc79711179f35b1dc5eb31046c535f1bed2/cytoolz-1.0.0-cp311-cp311-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:643a593ec272ef7429099e1182a22f64ec2696c00d295d2a5be390db1b7ff176", size = 2188448 },
+    { url = "https://files.pythonhosted.org/packages/56/a3/4e536fc7b72fd7495e19180463e8160a4fe1d50ab59a5854fc596621d5c3/cytoolz-1.0.0-cp311-cp311-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:6ce38e2e42cbae30446190c59b92a8a9029e1806fd79eaf88f48b0fe33003893", size = 2174196 },
+    { url = "https://files.pythonhosted.org/packages/5a/7f/0451778af9e22755a95ef4400ee7fc6e41387521ab0f17699593cb07169a/cytoolz-1.0.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:810a6a168b8c5ecb412fbae3dd6f7ed6c6253a63caf4174ee9794ebd29b2224f", size = 2099823 },
+    { url = "https://files.pythonhosted.org/packages/58/b7/8ffdef1ac8f74b0cc650b9d4a74d93d911a7e20fcf7cc0abac0f4bce225f/cytoolz-1.0.0-cp311-cp311-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:0ce8a2a85c0741c1b19b16e6782c4a5abc54c3caecda66793447112ab2fa9884", size = 1996733 },
+    { url = "https://files.pythonhosted.org/packages/1c/ab/9c694c883f3038d167b797cc55c64c2bdb64146428000cea15f235f30a0f/cytoolz-1.0.0-cp311-cp311-musllinux_1_2_aarch64.whl", hash = "sha256:ea4ac72e6b830861035c4c7999af8e55813f57c6d1913a3d93cc4a6babc27bf7", size = 2013725 },
+    { url = "https://files.pythonhosted.org/packages/6c/df/859faaee91c795dc969c79cd38159031f373828d44b0b18999feb7d9a44d/cytoolz-1.0.0-cp311-cp311-musllinux_1_2_i686.whl", hash = "sha256:a09cdfb21dfb38aa04df43e7546a41f673377eb5485da88ceb784e327ec7603b", size = 1994851 },
+    { url = "https://files.pythonhosted.org/packages/34/2a/26ac5a34e859c5ba32351f5a74492f4ed12e7a7e75b6afccf11c4100aa70/cytoolz-1.0.0-cp311-cp311-musllinux_1_2_ppc64le.whl", hash = "sha256:658dd85deb375ff7af990a674e5c9058cef1c9d1f5dc89bc87b77be499348144", size = 2155343 },
+    { url = "https://files.pythonhosted.org/packages/3d/41/f687d2e40407b29bfcce36a7d456dad368283ea543aa39da53bcc119974e/cytoolz-1.0.0-cp311-cp311-musllinux_1_2_s390x.whl", hash = "sha256:9715d1ff5576919d10b68f17241375f6a1eec8961c25b78a83e6ef1487053f39", size = 2163507 },
+    { url = "https://files.pythonhosted.org/packages/39/7c/70d529f909d97ea214d59923c19e3d05a3768fe8e2066542b72550a31ca4/cytoolz-1.0.0-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:f370a1f1f1afc5c1c8cc5edc1cfe0ba444263a0772af7ce094be8e734f41769d", size = 2054428 },
+    { url = "https://files.pythonhosted.org/packages/5a/4a/7bb2eafe4077f6d9867547ca74ca4b75bc8a081e32a47e186e5c067f6cab/cytoolz-1.0.0-cp311-cp311-win32.whl", hash = "sha256:dbb2ec1177dca700f3db2127e572da20de280c214fc587b2a11c717fc421af56", size = 322300 },
+    { url = "https://files.pythonhosted.org/packages/5a/ed/a1c955444343224ab1317a41f6575bc640055eb2495e8f9175f8f28bd776/cytoolz-1.0.0-cp311-cp311-win_amd64.whl", hash = "sha256:0983eee73df86e54bb4a79fcc4996aa8b8368fdbf43897f02f9c3bf39c4dc4fb", size = 365539 },
+    { url = "https://files.pythonhosted.org/packages/28/2e/a8b71f74ee75f33164bfbc6324ddd1e8d0f425255b1c930141516f51d539/cytoolz-1.0.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:10e3986066dc379e30e225b230754d9f5996aa8d84c2accc69c473c21d261e46", size = 414110 },
+    { url = "https://files.pythonhosted.org/packages/c6/0a/999af6bb896375b0c687e292a3dcd4edb338a2764bbac40c0ce11eb21c64/cytoolz-1.0.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:16576f1bb143ee2cb9f719fcc4b845879fb121f9075c7c5e8a5ff4854bd02fc6", size = 390900 },
+    { url = "https://files.pythonhosted.org/packages/30/04/02f0ee5339f8c6ef785f06caee85e17e8e0b406e7e553c8fd99a55ff8390/cytoolz-1.0.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:3faa25a1840b984315e8b3ae517312375f4273ffc9a2f035f548b7f916884f37", size = 2090729 },
+    { url = "https://files.pythonhosted.org/packages/04/de/296ded5f81ada90ae4db8c06cc34b142cf6c51fabb4c3c78583abba91c36/cytoolz-1.0.0-cp312-cp312-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:781fce70a277b20fd95dc66811d1a97bb07b611ceea9bda8b7dd3c6a4b05d59a", size = 2155926 },
+    { url = "https://files.pythonhosted.org/packages/cc/ce/d5782bdd3d2fd16d87e83e70e14fcfa65ba67ba21cf7e1007505baef7d79/cytoolz-1.0.0-cp312-cp312-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:7a562c25338eb24d419d1e80a7ae12133844ce6fdeb4ab54459daf250088a1b2", size = 2171893 },
+    { url = "https://files.pythonhosted.org/packages/d0/02/22a8c74ff13f8a08e8cacd0a0aa34da3a6e3637cf477e376efc61f7567e5/cytoolz-1.0.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f29d8330aaf070304f7cd5cb7e73e198753624eb0aec278557cccd460c699b5b", size = 2125265 },
+    { url = "https://files.pythonhosted.org/packages/50/d1/a3f2e2ced1fa7e2b5607d05ed4de9951491004a4804e96f78778d11bebd4/cytoolz-1.0.0-cp312-cp312-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:98a96c54aa55ed9c7cdb23c2f0df39a7b4ee518ac54888480b5bdb5ef69c7ef0", size = 1973962 },
+    { url = "https://files.pythonhosted.org/packages/3e/10/174d9585e1011824e2e6e79380f8b1c6e49070c35a278d823d996d1c11e6/cytoolz-1.0.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:287d6d7f475882c2ddcbedf8da9a9b37d85b77690779a2d1cdceb5ae3998d52e", size = 2021691 },
+    { url = "https://files.pythonhosted.org/packages/84/aa/bebdca3ae140698d3d4fe75ffd4c87a15ee999cee6b994e0831e5a24cdd7/cytoolz-1.0.0-cp312-cp312-musllinux_1_2_i686.whl", hash = "sha256:05a871688df749b982839239fcd3f8ec3b3b4853775d575ff9cd335fa7c75035", size = 2010169 },
+    { url = "https://files.pythonhosted.org/packages/2e/9f/8d5940c953534a4d2ae4419bb4fdc1eb5559345fed1f4838708073d7e6b4/cytoolz-1.0.0-cp312-cp312-musllinux_1_2_ppc64le.whl", hash = "sha256:28bb88e1e2f7d6d4b8e0890b06d292c568984d717de3e8381f2ca1dd12af6470", size = 2154314 },
+    { url = "https://files.pythonhosted.org/packages/84/bf/a5414601c95afde30a0c038c5d6273c188f1da8ff25a057bd0c683679e5c/cytoolz-1.0.0-cp312-cp312-musllinux_1_2_s390x.whl", hash = "sha256:576a4f1fc73d8836b10458b583f915849da6e4f7914f4ecb623ad95c2508cad5", size = 2188368 },
+    { url = "https://files.pythonhosted.org/packages/67/fe/990ea30d56b9b6602f3bf4af77a1bfd9233e6ffb761b11b8864619fed508/cytoolz-1.0.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:509ed3799c47e4ada14f63e41e8f540ac6e2dab97d5d7298934e6abb9d3830ec", size = 2077906 },
+    { url = "https://files.pythonhosted.org/packages/ab/95/94b936501e1e23460732631e5d7c6efc4f6c09df21a594dfca9bf30b9411/cytoolz-1.0.0-cp312-cp312-win32.whl", hash = "sha256:9ce25f02b910630f6dc2540dd1e26c9326027ddde6c59f8cab07c56acc70714c", size = 322445 },
+    { url = "https://files.pythonhosted.org/packages/be/04/a49b73591b132be5a28c0670229629a3c002cfac59582a1d38b16bdc6fed/cytoolz-1.0.0-cp312-cp312-win_amd64.whl", hash = "sha256:7e53cfcce87e05b7f0ae2fb2b3e5820048cd0bb7b701e92bd8f75c9fbb7c9ae9", size = 364595 },
+    { url = "https://files.pythonhosted.org/packages/16/7c/8b9fc006925b08579ae35293ad7d14fea4ee94edf1efaaa17e1bdde85b9a/cytoolz-1.0.0-pp310-pypy310_pp73-macosx_10_15_x86_64.whl", hash = "sha256:e672712d5dc3094afc6fb346dd4e9c18c1f3c69608ddb8cf3b9f8428f9c26a5c", size = 345694 },
+    { url = "https://files.pythonhosted.org/packages/76/d1/159cc7c0c86d6fb8177be437dd6112d90c7f40ef0ceda2102472242b0ccf/cytoolz-1.0.0-pp310-pypy310_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:86fb208bfb7420e1d0d20065d661310e4a8a6884851d4044f47d37ed4cd7410e", size = 385691 },
+    { url = "https://files.pythonhosted.org/packages/43/99/21361970f2d7cce241f116d84e8f5c21f1440414be96d0c8cad7832d35cb/cytoolz-1.0.0-pp310-pypy310_pp73-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:6dbe5fe3b835859fc559eb59bf2775b5a108f7f2cfab0966f3202859d787d8fd", size = 406251 },
+    { url = "https://files.pythonhosted.org/packages/d8/98/bc3d6eadb495de0d48c4d738e5ee6f011d8adbf6a3fcc1f7c17d05bc49d3/cytoolz-1.0.0-pp310-pypy310_pp73-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0cace092dfda174eed09ed871793beb5b65633963bcda5b1632c73a5aceea1ce", size = 397203 },
+    { url = "https://files.pythonhosted.org/packages/91/b1/df1ed78f08abe8781376bd197532e6e4b38bb3595dd82f6a2b8751407a52/cytoolz-1.0.0-pp310-pypy310_pp73-win_amd64.whl", hash = "sha256:f7a9d816af3be9725c70efe0a6e4352a45d3877751b395014b8eb2f79d7d8d9d", size = 343504 },
 ]
 
 [[package]]
@@ -137,4 +197,13 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/56/46/2449e6e51e0d7c3575f289f6acb7f828938eaab8874dbccfeb0cd2b71a27/scipy-1.14.1-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5149e3fd2d686e42144a093b206aef01932a0059c2a33ddfa67f5f035bdfe13e", size = 40798288 },
     { url = "https://files.pythonhosted.org/packages/32/cd/9d86f7ed7f4497c9fd3e39f8918dd93d9f647ba80d7e34e4946c0c2d1a7c/scipy-1.14.1-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:e4f5a7c49323533f9103d4dacf4e4f07078f360743dec7f7596949149efeec06", size = 42524647 },
     { url = "https://files.pythonhosted.org/packages/f5/1b/6ee032251bf4cdb0cc50059374e86a9f076308c1512b61c4e003e241efb7/scipy-1.14.1-cp313-cp313-win_amd64.whl", hash = "sha256:baff393942b550823bfce952bb62270ee17504d02a1801d7fd0719534dfb9c84", size = 44469524 },
+]
+
+[[package]]
+name = "toolz"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/8a/0b/d80dfa675bf592f636d1ea0b835eab4ec8df6e9415d8cfd766df54456123/toolz-1.0.0.tar.gz", hash = "sha256:2c86e3d9a04798ac556793bced838816296a2f085017664e4995cb40a1047a02", size = 66790 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/03/98/eb27cc78ad3af8e302c9d8ff4977f5026676e130d28dd7578132a457170c/toolz-1.0.0-py3-none-any.whl", hash = "sha256:292c8f1c4e7516bf9086f8850935c799a874039c8bcf959d47b600e4c44a6236", size = 56383 },
 ]

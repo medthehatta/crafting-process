@@ -22,7 +22,16 @@ class Process:
             **kwargs,
         )
 
-    def __init__(self, outputs, inputs=None, extra_inputs=None, duration=None):
+    def __init__(
+        self,
+        outputs,
+        inputs=None,
+        extra_inputs=None,
+        duration=None,
+        process=None,
+    ):
+        # This is just metadata saying what kind of process it is
+        self.process = process
         self.outputs = outputs
         self.inputs = inputs or Ingredients.zero()
         self.extra_inputs = extra_inputs or Ingredients.zero()
@@ -42,7 +51,12 @@ class Process:
             )
 
     def __repr__(self):
-        if self.duration:
-            return f"Process[{self.transfer}]/{self.duration}"
+        if self.process:
+            process = self.process
         else:
-            return f"Process[{self.transfer}]"
+            process = "Process"
+
+        if self.duration:
+            return f"{process}[{self.transfer}]/{self.duration}"
+        else:
+            return f"{process}[{self.transfer}]"

@@ -1,5 +1,7 @@
 from coolname import generate_slug
 
+from utils import only
+
 
 class GraphBuilder:
 
@@ -7,12 +9,16 @@ class GraphBuilder:
         self.processes = {}
         self.pools = {}
         self.pool_aliases = {}
+        self.open_inputs = []
+        self.open_outputs = []
 
     def add_process(self, process, name=None):
         name = name or generate_slug(2)
         self.processes[name] = process
         outputs = list(process.outputs.nonzero_components)
         inputs = list(process.inputs.nonzero_components)
+        self.open_inputs.extend([(name, x) for x in inputs])
+        self.open_outputs.extend([(name, x) for x in outputs])
         return {
             "name": name,
             "outputs": outputs,
@@ -20,7 +26,22 @@ class GraphBuilder:
             "process": process,
         }
 
-    def _connect_process_to_process(self, kind, src_process, dest_process):
+    def _connect_process_to_process(
+        self,
+        src_process,
+        dest_process,
+        kind=None,
+    ):
+        # If a kind was not provided, attempt to find compatible nodes between
+        # the src and dest processes and use that kind
+        if not kind:
+            src = self.processes[src_process]
+            dest = self.processes[dest_process]
+            kind = only(
+                x for x in src.outputs.nonzero_components.keys()
+                if x in dest.inputs.nonzero_components.keys()
+            )
+
         # If they are both processes, create a new pool unless one already
         # exists.  If a pool exists for both processes, coalesce them.
         src_pools = self.find_pools_by_kind_and_process_name(
@@ -67,10 +88,15 @@ class GraphBuilder:
             dest_pool = dest_pools[0]
             return self.coalesce_pools(src_pool, dest_pool)
 
-    def connect(self, kind, src, dest):
-        return self.connect_named(kind, src["name"], dest["name"])
+    def connect(self, src, dest, kind=None):
+        return self.connect_named(src["name"], dest["name"], kind=kind)
 
-    def connect_named(self, kind, src_process_or_pool, dest_process_or_pool):
+    def connect_named(
+        self,
+        src_process_or_pool,
+        dest_process_or_pool,
+        kind=None,
+    ):
         if src_process_or_pool in self.processes:
             src_kind = "process"
         elif src_process_or_pool in self.pools:
@@ -109,9 +135,9 @@ class GraphBuilder:
 
             case ("process", "process"):
                 return self._connect_process_to_process(
-                    kind,
                     src_process_or_pool,
                     dest_process_or_pool,
+                    kind=kind,
                 )
 
     def coalesce_pools(self, pool1_name, pool2_name):
