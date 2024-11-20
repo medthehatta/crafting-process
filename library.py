@@ -116,24 +116,27 @@ def specs_from_lines(lines):
             buf += line + "\n"
             found = True
 
+    if buf:
+        yield parse_process(buf)
 
-def parse_to_registry(lines):
-    registry = []
-    for spec in specs_from_lines(lines):
-        inputs = (
-            Ingredients.parse(spec["inputs"]) if spec.get("inputs")
-            else Ingredients.zero()
-        )
-        outputs = (
-            Ingredients.parse(spec["outputs"]) if spec.get("outputs")
-            else Ingredients.zero()
-        )
 
-        kwargs = {
-            k: v for (k, v) in spec.items()
-            if k not in ["inputs", "outputs"]
-        }
+def process_from_spec_dict(spec):
+    inputs = (
+        Ingredients.parse(spec["inputs"]) if spec.get("inputs")
+        else Ingredients.zero()
+    )
+    outputs = (
+        Ingredients.parse(spec["outputs"]) if spec.get("outputs")
+        else Ingredients.zero()
+    )
 
-        registry.append(Process(outputs=outputs, inputs=inputs, **kwargs))
+    kwargs = {
+        k: v for (k, v) in spec.items()
+        if k not in ["inputs", "outputs"]
+    }
 
-    return registry
+    return Process(outputs=outputs, inputs=inputs, **kwargs)
+
+
+def parse_processes(lines):
+    return [process_from_spec_dict(spec) for spec in specs_from_lines(lines)]

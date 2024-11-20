@@ -3,7 +3,7 @@ from process import Ingredients
 from process import Process
 from solver import solve_milp
 from solver import best_milp_sequence
-from library import parse_to_registry
+from library import parse_processes
 from library import Predicates
 
 
@@ -25,7 +25,7 @@ butter | purchase: duration=10
 money
 
 """
-reg = parse_to_registry(sample.splitlines())
+reg = parse_processes(sample.splitlines())
 
 
 gb = GraphBuilder()
@@ -35,3 +35,10 @@ for p in reg:
 
 res = milps_graph(gb)
 print(list(res))
+
+
+# Add recipe
+# Add recipe to graph
+# Add resource pool to graph
+# Connect processes or resource pools in graph
+# Compute MILP for the graph
