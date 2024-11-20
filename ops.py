@@ -15,6 +15,10 @@ class CraftingContext:
         self.graphs = {}
         self.recipes = {}
 
+    #
+    # Serialization
+    #
+
     def get_graph(self, graph):
         if graph not in self.graphs:
             self.graphs[graph] = GraphBuilder()
@@ -28,10 +32,35 @@ class CraftingContext:
         # For now just generate a random slug
         return generate_slug(2)
 
+    def recipes_to_dict(self, recipe_dict):
+        # Convert the recipes in the recipe dict to dicts themselves
+        return {k: v.to_dict() for (k, v) in recipe_dict.items()}
+
+    #
+    # Searching
+    #
+
+    def find_recipe_producing(self, resource):
+        return {
+            n: r.to_dict() for (n, r) in self.recipes.items()
+            if Predicates.outputs_part(resource, r)
+        }
+
+    def find_recipe_consuming(self, resource):
+        return {
+            n: r.to_dict() for (n, r) in self.recipes.items()
+            if Predicates.requires_part(resource, r)
+        }
+
+    #
+    # Operations
+    #
+
     def add_recipes_from_text(self, text):
-        found = parse_processes(text)
-        for f in found:
-            self.recipes[self.name_recipe(f)] = f
+        found = parse_processes(text.splitlines())
+        staged = {self.name_recipe(f): f for f in found}
+        self.recipes.update(staged)
+        return self.recipes_to_dict(staged)
 
     def add_recipe_from_dict(self, data):
         recipe = process_from_spec_dict(data)
@@ -40,27 +69,16 @@ class CraftingContext:
         return name
 
     def add_recipes_from_dicts(self, data):
-        return [
+        names = [
             self.add_recipe_from_dict(datum)
             for datum in data
         ]
+        return self.recipes_to_dict({n: self.recipes[n] for n in names})
 
     def add_recipe_to_graph(self, graph, recipe):
         g = self.get_graph(graph)
         new = g.add_process(self.get_recipe(recipe))
         return new["name"]
-
-    def find_recipe_producing(self, resource):
-        return {
-            n: r for (n, r) in self.recipes.items()
-            if Predicates.outputs_part(resource, r)
-        }
-
-    def find_recipe_consuming(self, resource):
-        return {
-            n: r for (n, r) in self.recipes.items()
-            if Predicates.requires_part(resource, r)
-        }
 
     def add_resource_pool_to_graph(self, graph, pool_kind):
         g = self.get_graph(graph)

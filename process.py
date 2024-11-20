@@ -50,6 +50,17 @@ class Process:
                 "Process which has no duration has no transfer rate"
             )
 
+    def to_dict(self):
+        return {
+            "outputs": [(n, c) for (n, c, _) in self.outputs.triples()],
+            "inputs": [(n, c) for (n, c, _) in self.inputs.triples()],
+            "duration": self.duration,
+            "extra_inputs": [
+                (n, c) for (n, c, _) in self.extra_inputs.triples()
+            ],
+            "transfer_summary": str(self.transfer),
+        }
+
     def __repr__(self):
         if self.process:
             process = self.process
