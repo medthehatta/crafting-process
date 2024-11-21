@@ -26,7 +26,6 @@ class Process:
         self,
         outputs,
         inputs=None,
-        extra_inputs=None,
         duration=None,
         process=None,
     ):
@@ -34,7 +33,6 @@ class Process:
         self.process = process
         self.outputs = outputs
         self.inputs = inputs or Ingredients.zero()
-        self.extra_inputs = extra_inputs or Ingredients.zero()
         self.duration = duration
 
     @property
@@ -55,9 +53,6 @@ class Process:
             "outputs": [(n, c) for (n, c, _) in self.outputs.triples()],
             "inputs": [(n, c) for (n, c, _) in self.inputs.triples()],
             "duration": self.duration,
-            "extra_inputs": [
-                (n, c) for (n, c, _) in self.extra_inputs.triples()
-            ],
             "transfer_summary": str(self.transfer),
         }
 
