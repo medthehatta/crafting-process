@@ -179,6 +179,10 @@ class GraphBuilder:
                 f"'{pool_name}': no '{pool['kind']}' output in {src}"
             )
         pool["inputs"].append(src_process_name)
+        self.open_outputs = [
+            (pname, res) for (pname, res) in self.open_outputs
+            if not (pname == src_process_name and res == pool["kind"])
+        ]
         return pool
 
     def _from_pool(self, pool_name, dest_process_name):
@@ -190,6 +194,10 @@ class GraphBuilder:
                 f"'{pool_name}': no '{pool['kind']}' input in {dest}"
             )
         pool["outputs"].append(dest_process_name)
+        self.open_inputs = [
+            (pname, res) for (pname, res) in self.open_inputs
+            if not (pname == dest_process_name and res == pool["kind"])
+        ]
         return pool
 
     def find_pools_by_kind(self, kind):

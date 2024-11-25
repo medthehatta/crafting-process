@@ -18,6 +18,8 @@ class CraftingContext:
         self.graphs = {}
         self.recipes = {}
         self.augments = {}
+        self.recipe_tags = {}
+        self.process_tags = {}
 
     #
     # Serialization
@@ -31,10 +33,6 @@ class CraftingContext:
 
     def get_augment(self, augment):
         return self.augments[augment]
-
-    def name_augment(self, augment):
-        # For now just generate a random slug
-        return generate_slug(2)
 
     def get_recipe(self, recipe):
         return self.recipes[recipe]
@@ -64,19 +62,31 @@ class CraftingContext:
         }
 
     #
+    # Inspection
+    #
+
+    def get_open_inputs(self, graph):
+        g = self.get_graph(graph)
+        return g.open_inputs
+
+    def get_open_outputs(self, graph):
+        g = self.get_graph(graph)
+        return g.open_outputs
+
+    #
     # Operations
     #
 
     def add_recipes_from_text(self, text):
         found = parse_processes(text.splitlines())
-        staged = {self.name_recipe(f): f for f in found}
+        staged = {self.name_recipe(f): AugmentedProcess(f) for f in found}
         self.recipes.update(staged)
         return self.recipes_to_dict(staged)
 
     def add_recipe_from_dict(self, data):
         recipe = process_from_spec_dict(data)
         name = self.name_recipe(recipe)
-        self.recipes[name] = recipe
+        self.recipes[name] = AugmentedProcess(recipe)
         return name
 
     def add_recipes_from_dicts(self, data):
@@ -108,6 +118,19 @@ class CraftingContext:
         g = self.get_graph(graph)
         new = g.add_pool(pool_kind)
         return new["name"]
+
+    def apply_augment_to_process(self, graph, augment_name, process_name):
+        g = self.get_graph(graph)
+        augment = self.get_augment(augment_name)
+        g.processes[process_name].augments.append(augment)
+        return g.processes[process_name]
+
+    def remove_augment_from_process(self, graph, augment_name, process_name):
+        g = self.get_graph(graph)
+        augment = self.get_augment(augment_name)
+        if augment in g.processes[process_name].augments:
+            g.processes[process_name].augments.remove(augment)
+        return g.processes[process_name]
 
     def connect(self, graph, source, dest):
         g = self.get_graph(graph)

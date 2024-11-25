@@ -58,6 +58,4 @@ cc = CraftingContext()
 
 
 rec = cc.add_recipes_from_text(sample)
-
-
 augs = parse_augments(augs_sample.splitlines())

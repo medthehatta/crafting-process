@@ -75,10 +75,9 @@ class Augments:
 
 class AugmentedProcess:
 
-    def _init__(self, process, augments=None, tags=None):
+    def __init__(self, process, augments=None):
         self.process = process
         self.augments = augments or []
-        self.tags = tags or {}
 
     def _augmented(self):
         p = self.process
