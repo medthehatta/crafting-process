@@ -38,8 +38,20 @@ class CraftingContext:
         return self.recipes[recipe]
 
     def name_recipe(self, recipe):
-        # For now just generate a random slug
-        return generate_slug(2)
+        process_name = recipe.process
+        output_names = recipe.outputs.nonzero_components
+        if process_name:
+            name = " + ".join(output_names) + f" via {process_name}"
+        else:
+            name = " + ".join(output_names)
+
+        if name in self.recipes:
+            disambiguator = 2
+            while f"{name} {disambiguator}" in self.recipes:
+                disambiguator += 1
+            name = f"{name} {disambiguator}"
+
+        return name
 
     def recipes_to_dict(self, recipe_dict):
         # Convert the recipes in the recipe dict to dicts themselves

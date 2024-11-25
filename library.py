@@ -100,6 +100,11 @@ class Predicates:
     def requires_part(cls, part, process):
         return part in process.inputs.nonzero_components
 
+    @classmethod
+    @curry
+    def uses_process(cls, process_name, process):
+        return process.process == process_name
+
 
 def specs_from_lines(lines):
     found = False
