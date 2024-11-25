@@ -54,6 +54,7 @@ class Process:
             "inputs": [(n, c) for (n, c, _) in self.inputs.triples()],
             "duration": self.duration,
             "transfer_summary": str(self.transfer),
+            "process": self.process,
         }
 
     def __repr__(self):

@@ -76,38 +76,18 @@ class Augments:
 class AugmentedProcess:
 
     def __init__(self, process, augments=None):
-        self.process = process
+        self._process = process
         self.augments = augments or []
 
     def _augmented(self):
-        p = self.process
+        p = self._process
         for augment in self.augments:
             p = augment(p)
         return p
 
-    @property
-    def transfer(self):
+    def __getattr__(self, attr):
         proc = self._augmented()
-        return proc.outputs - proc.inputs
-
-    @property
-    def transfer_rate(self):
-        proc = self._augmented()
-        if proc.duration:
-            return (1 / proc.duration) * proc.transfer
-        else:
-            raise ValueError(
-                "Process which has no duration has no transfer rate"
-            )
-
-    def to_dict(self):
-        proc = self._augmented()
-        return {
-            "outputs": [(n, c) for (n, c, _) in proc.outputs.triples()],
-            "inputs": [(n, c) for (n, c, _) in proc.inputs.triples()],
-            "duration": proc.duration,
-            "transfer_summary": str(self.transfer),
-        }
+        return getattr(proc, attr)
 
     def __repr__(self):
         proc = self._augmented()

@@ -1,0 +1,304 @@
+5 basic tech card | character: duration=20
+5 wood + 5 copper cable
+
+5 automation tech card | duration=40
+automation core + 5 blank tech card
+
+blank tech card | duration=4
+2 iron plate + 2 copper cable
+
+5 basic tech card | duration=40
+5 wood + 5 copper cable
+
+8 copper cable | character: duration=2
+4 copper plate
+
+8 copper cable | duration=4
+4 copper plate
+
+5 copper plate | stonefurnace: duration=16
+10 copper ore
+
+5 copper plate | steelfurnace: duration=8
+10 copper ore
+
+stone furnace | character: duration=0.5
+5 stone
+
+stone furnace | duration=1
+5 stone
+
+burner miner | character: duration=2
+3 iron plate + 3 iron gear + stone furnace
+
+5 iron plate | stonefurnace: duration=16
+10 iron ore
+
+5 iron plate | steelfurnace: duration=8
+10 iron ore
+
+4 iron gear | character: duration=2
+4 iron plate
+
+wood chest | character: duration=0.5
+2 wood
+
+wood chest | duration=1
+2 wood
+
+lab | character: duration=2
+10 copper plate + 10 copper cable + 10 iron beam
+
+lab | duration=4
+10 copper plate + 10 copper cable + 10 iron beam
+
+iron beam | character: duration=2
+2 iron plate
+
+iron beam | duration=4
+2 iron plate
+
+iron ore | burnerminer: duration=4
+
+copper ore | burnerminer: duration=4
+
+stone | burnerminer: duration=4
+
+coal | burnerminer: duration=4
+
+iron ore | electricdrill: duration=2
+
+copper ore | electricdrill: duration=2
+
+stone | electricdrill: duration=2
+
+coal | electricdrill: duration=2
+
+wind turbine | character: duration=5
+6 iron plate + 6 copper cable + 2 iron beam + 6 iron gear
+
+wind turbine | duration=10
+6 iron plate + 6 copper cable + 2 iron beam + 6 iron gear
+
+repair pack | character: duration=0.5
+2 stone + 2 iron plate + 2 copper plate
+
+burner inserter | duration=1
+iron plate + inserter parts
+
+2 inserter parts | duration=4
+4 iron stick + 4 iron gear
+
+transport belt | duration=1
+iron plate + iron gear
+
+iron gear | duration=4
+4 iron plate
+
+assembler | duration=2
+4 iron beam + 5 iron gear + 2 automation core
+
+2 automation core | duration=4
+6 copper plate + 4 iron stick + 4 iron gear
+
+8 iron stick | duration=4
+4 iron plate
+
+20 kw | wind turbine:
+
+240 kw | ship reactor:
+
+1250 water | offshore pump:
+
+20 steam | boiler:
+20 water
+
+750 kw | steam engine:
+10 steam
+
+submachine gun | duration=20
+3 iron plate + 2 copper plate + 5 iron gear
+
+rifle magazine | duration=2
+2 coal + iron plate + copper plate
+
+5 logistic tech card | duration=40
+5 iron gear + 5 green circuit + 5 blank tech card
+
+2 green circuit | duration=4
+wood + iron plate + 4 copper cable
+
+inserter | duration=1
+inserter parts + automation core
+
+long inserter | duration=1
+2 iron stick + inserter parts + automation core
+
+underground belt | duration=2
+2 iron beam + 5 transport belt
+
+splitter | duration=2
+5 iron gear + automation core + 4 transport belt
+
+loader | duration=4
+2 iron beam + 10 iron gear + transport belt
+
+pipe | duration=1
+iron plate
+
+2 underground pipe | duration=1
+5 iron plate + 10 pipe
+
+5 stone brick | stonefurnace: duration=16
+10 stone
+
+5 stone brick | steelfurnace: duration=8
+10 stone
+
+electric drill | duration=4
+2 iron beam + 5 iron gear + 2 automation core
+
+turret | duration=20
+5 iron beam + 4 iron gear + 3 automation core
+
+iron chest | duration=1
+8 iron plate
+
+5 steel plate | stonefurnace: duration=16
+2 coke + 10 iron plate
+
+5 steel plate | steelfurnace: duration=8
+2 coke + 10 iron plate
+
+6 coke | stonefurnace: duration=16
+6 wood + 6 coal
+
+6 coke | steelfurnace: duration=8
+6 wood + 6 coal
+
+5 steel gear | duration=4
+4 steel plate
+
+steel chest | duration=1
+8 steel plate
+
+wood | character: duration=1
+
+greenhouse | duration=20
+20 wood + 20 glass + 10 iron beam + 2 automation core
+
+7 sand | crusher: duration=1
+3 stone
+
+40 wood | greenhouse: duration=60
+200 water
+
+steel furnace | duration=6
+6 steel plate + 10 stone brick
+
+boiler | duration=1
+4 pipe + stone furnace
+
+steam engine | duration=10
+10 iron plate + 8 iron gear + 5 pipe
+
+fast inserter | duration=1
+steel plate + inserter parts + green circuit
+
+engine unit | duration=20
+iron plate + iron gear + 2 pipe
+
+car | character: duration=30
+20 iron plate + 5 steel plate + 8 engine unit
+
+car | duration=60
+20 iron plate + 5 steel plate + 8 engine unit
+
+military tech card | duration=40
+5 electronic components + 5 blank tech card + biter research data
+
+4 electronic components | duration=8
+2 glass + 2 silicon + 2 plastic bar
+
+8 glass | stonefurnace: duration=16
+16 sand
+
+8 glass | steelfurnace: duration=8
+16 sand
+
+9 silicon | stonefurnace: duration=16
+18 quartz
+
+9 silicon | steelfurnace: duration=8
+18 quartz
+
+6 quartz | filtrationplant: duration=2.1
+10 sand + 10 water
+
+filtration plant | duration=20
+10 glass + 10 steel beam + 3 automation core + 4 engine unit
+
+steel beam | duration=4
+2 steel plate
+
+10 fuel | fuelrefinery: duration=10
+60 light oil
+
+10 fuel | fuelrefinery: duration=10
+6 solid fuel + 50 hydrogen
+
+solid fuel | chemicalplant: duration=2
+20 petroleum
+
+45 petroleum | oilrefinery: duration=5
+100 crude oil
+
+20 chlorine + 30 hydrogen | electrolysis: duration=3
+10 sand + 40 water
+
+2 rail | duration=1
+2 stone + steel beam
+
+oil pumpjack | duration=10
+4 steel beam + 10 steel gear + 3 automation core + 10 pipe
+
+chemical plant | duration=10
+4 steel beam + 5 steel gear + 3 automation core + 5 pipe
+
+fuel refinery | duration=10
+5 steel plate + 5 iron gear + 5 green circuit + 5 pipe
+
+5 chemical tech card | assembler2: duration=26.67
+15 glass + 5 red circuit + 5 blank tech card + 50 sulfuric acid
+
+5 biter research data | duration=80
+5 coke + 10 biomass + 5 steel plate
+
+5 biomass | biolab: duration=60
+50 petroleum + 50 oxygen
+
+oil refinery | duration=16
+4 steel beam + 10 steel gear + 5 automation core + 10 pipe + 10 stone brick
+
+sulfuric acid | chemicalplant: duration=2
+2 iron plate + 10 sulfur + 200 water
+
+4 sulfur | chemicalplant: duration=2
+60 water + 60 petroleum
+
+2 crude oil | pumpjack: duration=1
+
+medium electric pole | duration=1
+4 copper cable + 4 iron stick + 2 iron beam
+
+big electric pole | duration=1
+8 copper cable + 8 iron stick + 4 steel beam
+
+red circuit | duration=8
+4 copper cable + 2 electronic components + 4 green circuit
+
+4 plastic bar | chemicalplant: duration=2
+2 coal + 40 petroleum
+
+
+

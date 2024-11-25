@@ -14,19 +14,8 @@ def milps_graph(graph):
     return best_milp_sequence(m["matrix"], m["processes"])
 
 
-sample = """
-cookies | bake: duration=5
-milk + eggs + butter + sugar
-
-butter | churn: duration=20
-milk
-
-milk | duration=1
-
-butter | purchase: duration=10
-money
-
-"""
+with open("krastorio-recipes.txt") as f:
+    sample = f.read()
 
 augs_sample = """
 assembler 1
@@ -59,3 +48,5 @@ cc = CraftingContext()
 
 rec = cc.add_recipes_from_text(sample)
 augs = cc.add_augments_from_text(augs_sample)
+
+
