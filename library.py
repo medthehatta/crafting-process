@@ -177,6 +177,8 @@ def augment_specs_from_lines(lines):
                 + [(func_name, arg_parser(rest))]
             )
 
+    return records
+
 
 def augments_from_records(records):
     result = {
