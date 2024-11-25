@@ -3,6 +3,7 @@ from process import Ingredients
 from process import Process
 from solver import solve_milp
 from solver import best_milp_sequence
+from library import parse_augments
 from library import parse_processes
 from library import Predicates
 from ops import CraftingContext
@@ -26,6 +27,14 @@ butter | purchase: duration=10
 money
 
 """
+
+augs_sample = """
+assembler 1
+mul_speed 0.5
+add_input 75.5 kWe
+
+"""
+
 #reg = parse_processes(sample.splitlines())
 #
 #
@@ -49,3 +58,6 @@ cc = CraftingContext()
 
 
 rec = cc.add_recipes_from_text(sample)
+
+
+augs = parse_augments(augs_sample.splitlines())

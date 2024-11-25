@@ -13,5 +13,10 @@ async def index():
     return {"ok": True}
 
 
+@app.post("/recipes")
+async def post_recipes(recipe):
+    pass
+
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=9090)

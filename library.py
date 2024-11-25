@@ -6,6 +6,7 @@ from utils import curry
 from graph import GraphBuilder
 from process import Ingredients
 from process import Process
+from augment import Augments
 
 
 def parse_process(s):
@@ -140,3 +141,56 @@ def process_from_spec_dict(spec):
 
 def parse_processes(lines):
     return [process_from_spec_dict(spec) for spec in specs_from_lines(lines)]
+
+
+def augment_specs_from_lines(lines):
+    arg_parsers = {
+        "mul_duration": float,
+        "mul_speed": float,
+        "mul_inputs": float,
+        "mul_outputs": float,
+        "add_input": Ingredients.parse,
+        "add_output": Ingredients.parse,
+    }
+
+    records = []
+
+    record_in_progress = {}
+
+    for line in lines:
+        if (not line.strip() or line.startswith("---")) and record_in_progress:
+            records.append(record_in_progress.copy())
+            record_in_progress = {}
+
+        elif not line.strip() or line.startswith("---"):
+            continue
+
+        elif not record_in_progress:
+            name = line.strip()
+            record_in_progress = {"name": name}
+
+        elif "name" in record_in_progress:
+            (func_name, rest) = re.split(r"\s+", line.strip(), 1)
+            arg_parser = arg_parsers.get(func_name)
+            record_in_progress["augments"] = (
+                record_in_progress.get("augments", [])
+                + [(func_name, arg_parser(rest))]
+            )
+
+
+def augments_from_records(records):
+    result = {
+        record["name"]: Augments.composed(
+            [
+                getattr(Augments, func_name)(input_arg)
+                for (func_name, input_arg) in record["augments"]
+            ]
+        )
+        for record in records
+    }
+
+    return result
+
+
+def parse_augments(lines):
+    return augments_from_records(augment_specs_from_lines(lines))

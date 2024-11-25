@@ -2,11 +2,14 @@ from coolname import generate_slug
 
 from graph import GraphBuilder
 from process import Ingredients
-from process import Process
+from augment import AugmentedProcess
 from solver import best_milp_sequence
 from library import parse_processes
+from library import parse_augments
+from library import augments_from_records
 from library import process_from_spec_dict
 from library import Predicates
+from utils import only
 
 
 class CraftingContext:
@@ -14,6 +17,7 @@ class CraftingContext:
     def __init__(self):
         self.graphs = {}
         self.recipes = {}
+        self.augments = {}
 
     #
     # Serialization
@@ -24,6 +28,13 @@ class CraftingContext:
             self.graphs[graph] = GraphBuilder()
 
         return self.graphs[graph]
+
+    def get_augment(self, augment):
+        return self.augments[augment]
+
+    def name_augment(self, augment):
+        # For now just generate a random slug
+        return generate_slug(2)
 
     def get_recipe(self, recipe):
         return self.recipes[recipe]
@@ -74,6 +85,19 @@ class CraftingContext:
             for datum in data
         ]
         return self.recipes_to_dict({n: self.recipes[n] for n in names})
+
+    def add_augments_from_text(self, text):
+        found = parse_augments(text.splitlines())
+        self.augments.update(found)
+        return list(found.keys())
+
+    def add_augment_from_dict(self, data):
+        return only(self.add_augments_from_dicts([data]))
+
+    def add_augments_from_dicts(self, data):
+        found = augments_from_records(data)
+        self.augments.update(found)
+        return list(found.keys())
 
     def add_recipe_to_graph(self, graph, recipe):
         g = self.get_graph(graph)
