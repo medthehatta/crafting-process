@@ -92,6 +92,21 @@ class Predicates:
 
     @classmethod
     @curry
+    def any_(cls, predicates, process):
+        return any(predicate(process) for predicate in predicates)
+
+    @classmethod
+    @curry
+    def all_(cls, predicates, process):
+        return all(predicate(process) for predicate in predicates)
+
+    @classmethod
+    @curry
+    def outputs_any_of(cls, kinds):
+        return cls.any_([cls.outputs_part(k) for k in kinds])
+
+    @classmethod
+    @curry
     def outputs_part(cls, part, process):
         return part in process.outputs.nonzero_components
 

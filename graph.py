@@ -12,6 +12,25 @@ class GraphBuilder:
         self.open_inputs = []
         self.open_outputs = []
 
+    @classmethod
+    def union(cls, left, right):
+        new = cls()
+        new.processes = {**left.processes, **right.processes}
+        new.pools = {**left.pools, **right.pools}
+        new.pool_aliasess = {**left.pool_aliasess, **right.pool_aliasess}
+        new.processes = {**left.processes, **right.processes}
+        new.open_inputs = left.open_inputs + right.open_inputs
+        new.open_outputs = left.open_outputs + right.open_outputs
+        return new
+
+    def unify(self, other):
+        self.processes.update(other.processes)
+        self.pools.update(other.pools)
+        self.pool_aliases.update(other.processes)
+        self.open_inputs.extend(other.open_inputs)
+        self.open_outputs.extend(other.open_outputs)
+        return self
+
     def add_process(self, process, name=None):
         name = name or generate_slug(2)
         self.processes[name] = process

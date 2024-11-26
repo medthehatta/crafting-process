@@ -153,3 +153,7 @@ class CraftingContext:
         m = self.get_graph(graph).build_matrix()
         # FIXME: Make output serializable
         return best_milp_sequence(m["matrix"], m["processes"])
+
+    def set_graph(self, graph_name, graph):
+        self.graphs[graph_name] = graph
+        return graph_name
