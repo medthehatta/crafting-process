@@ -1,4 +1,8 @@
+from collections import Counter
+from itertools import product
+
 from coolname import generate_slug
+from cytoolz import take
 
 from graph import GraphBuilder
 from process import Ingredients
@@ -10,6 +14,41 @@ from library import augments_from_records
 from library import process_from_spec_dict
 from library import Predicates
 from utils import only
+
+
+#
+# Helpers
+#
+
+
+def _join_dicts(dicts):
+    acc = {}
+    for dic in dicts:
+        acc.update(dic)
+    return acc
+
+
+def flatten(lst):
+    return sum(list(lst), [])
+
+
+def pull_recipes(procedure):
+    if not isinstance(procedure, dict):
+        return []
+
+    value = only(procedure.values())
+    if "recipe" not in value:
+        return []
+
+    return flatten(
+        [[value["recipe"]]] +
+        [pull_recipes({k: x}) for (k, x) in value.get("inputs", {}).items()]
+    )
+
+
+#
+# Classes
+#
 
 
 class CraftingContext:
@@ -36,6 +75,16 @@ class CraftingContext:
 
     def get_recipe(self, recipe):
         return self.recipes[recipe]
+
+    def describe_recipe(self, recipe):
+        process_name = recipe.process
+        output_names = recipe.outputs.nonzero_components
+        if process_name:
+            name = " + ".join(output_names) + f" via {process_name}"
+        else:
+            name = " + ".join(output_names)
+
+        return name
 
     def name_recipe(self, recipe):
         process_name = recipe.process
@@ -150,10 +199,120 @@ class CraftingContext:
         return pool["name"]
 
     def milps(self, graph):
-        m = self.get_graph(graph).build_matrix()
-        # FIXME: Make output serializable
-        return best_milp_sequence(m["matrix"], m["processes"])
+        g = self.get_graph(graph)
+        m = g.build_matrix()
+        seq = best_milp_sequence(m["matrix"], m["processes"])
+        for (leak, counts) in seq:
+            yield {
+                "leakage": leak,
+                "counts": [
+                    (count, self.describe_recipe(g.processes[name]), name)
+                    for (name, count) in counts.items()
+                ],
+            }
 
     def set_graph(self, graph_name, graph):
         self.graphs[graph_name] = graph
         return graph_name
+
+    def iterate_possible_procedures(
+        self,
+        output,
+        stop_pred=None,
+        skip_pred=None,
+    ):
+        stop_pred = stop_pred or (lambda x: False)
+        skip_pred = skip_pred or (lambda x: False)
+
+        found = self.find_recipe_producing(output)
+        if not found:
+            return {output: {}}
+
+        for (name, recipe) in found.items():
+            if stop_pred(self.recipes[name]):
+                yield {output: {}}
+                return
+
+            elif skip_pred(self.recipes[name]):
+                continue
+
+            else:
+                inputs = [name for (name, _) in recipe["inputs"]]
+                constituent_itr = [
+                    self.iterate_possible_procedures(
+                        inp,
+                        stop_pred=stop_pred,
+                        skip_pred=skip_pred,
+                    )
+                    for inp in inputs
+                ]
+                for recipe_combo in product(*constituent_itr):
+                    yield {
+                        output: {
+                            "recipe": name,
+                            "inputs": _join_dicts(recipe_combo),
+                        }
+                    }
+
+    def find_procedures(
+        self,
+        output,
+        stop_pred=None,
+        skip_pred=None,
+        limit=10,
+        hard_limit=1000,
+    ):
+        itr = self.iterate_possible_procedures(
+            output,
+            stop_pred=stop_pred,
+            skip_pred=skip_pred,
+        )
+
+        lst = list(take(hard_limit, itr))
+
+        recipe_histogram = dict(Counter(flatten(pull_recipes(procedure) for procedure in lst)))
+
+        try:
+            next(itr)
+            raise ValueError(
+                f"Resultset is larger than {limit}, and is even larger than "
+                f"{hard_limit}, so not counting the size!  "
+                f"Recipe histogram (next line):\n {recipe_histogram}"
+            )
+        except StopIteration:
+            pass
+
+        if len(lst) > limit:
+            raise ValueError(
+                f"Resultset is larger than {limit}!  "
+                f"Found {len(lst)} entries instead.  Apply filters."
+                f"Recipe histogram (next line):\n {recipe_histogram}"
+            )
+
+        return lst
+
+    def procedure_to_graph(self, procedure):
+        g = GraphBuilder()
+
+        # {"iron gear": {"recipe": "iron gear", "inputs": [...]}}
+        spec = only(procedure.values())
+
+        # This will just have one value
+        recipe_name = spec.get("recipe")
+        if not recipe_name:
+            return (None, None)
+        recipe = self.get_recipe(recipe_name)
+        if not recipe:
+            return (None, None)
+
+        p = g.add_process(recipe)
+
+        inputs = spec.get("inputs", {})
+
+        for (k, inp) in inputs.items():
+            (i_process, i_graph) = self.procedure_to_graph({k: inp})
+            if i_process:
+                g.unify(i_graph)
+                g.connect(i_process, p)
+
+        return (p, g)

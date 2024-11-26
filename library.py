@@ -120,6 +120,11 @@ class Predicates:
     def uses_process(cls, process_name, process):
         return process.process == process_name
 
+    @classmethod
+    @curry
+    def uses_any_of_processes(cls, process_names):
+        return cls.any_([cls.uses_process(k) for k in process_names])
+
 
 def specs_from_lines(lines):
     found = False

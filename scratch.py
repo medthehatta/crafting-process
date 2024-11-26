@@ -57,129 +57,23 @@ rec = cc.add_recipes_from_text(sample)
 augs = cc.add_augments_from_text(augs_sample)
 
 
-def _join_dicts(dicts):
-    acc = {}
-    for dic in dicts:
-        acc.update(dic)
-    return acc
-
-
-def iterate_possible_procedures(
-    ctx,
-    output,
-    stop_pred=None,
-    skip_pred=None,
-):
-    stop_pred = stop_pred or (lambda x: False)
-    skip_pred = skip_pred or (lambda x: False)
-
-    found = ctx.find_recipe_producing(output)
-    if not found:
-        return {output: {}}
-
-    for (name, recipe) in found.items():
-        if stop_pred(ctx.recipes[name]):
-            yield {output: {}}
-            return
-
-        elif skip_pred(ctx.recipes[name]):
-            continue
-
-        else:
-            inputs = [name for (name, _) in recipe["inputs"]]
-            constituent_itr = [
-                iterate_possible_procedures(ctx, inp, stop_pred=stop_pred, skip_pred=skip_pred)
-                for inp in inputs
-            ]
-            for recipe_combo in product(*constituent_itr):
-                yield {
-                    output: {
-                        "recipe": name,
-                        "inputs": _join_dicts(recipe_combo),
-                    }
-                }
-
-
-def find_procedures(
-    ctx,
-    output,
-    stop_pred=None,
-    skip_pred=None,
-    limit=10,
-    hard_limit=1000,
-):
-    itr = iterate_possible_procedures(
-        ctx,
-        output,
-        stop_pred=stop_pred,
-        skip_pred=skip_pred,
-    )
-
-    lst = list(take(hard_limit, itr))
-
-    try:
-        next(itr)
-        raise ValueError(
-            f"Resultset is larger than {limit}, and is even larger than "
-            f"{hard_limit}, so not counting the size!  Apply filters."
-        )
-    except StopIteration:
-        pass
-
-    if len(lst) > limit:
-        raise ValueError(
-            f"Resultset is larger than {limit}!  "
-            f"Found {len(lst)} entries instead.  Apply filters."
-        )
-
-    return lst
-
-
-def procedure_to_graph(ctx, procedure):
-    g = GraphBuilder()
-
-    # {"iron gear": {"recipe": "iron gear", "inputs": [...]}}
-    spec = only(procedure.values())
-
-    # This will just have one value
-    recipe_name = spec.get("recipe")
-    if not recipe_name:
-        return (None, None)
-    recipe = ctx.get_recipe(recipe_name)
-    if not recipe:
-        return (None, None)
-
-    p = g.add_process(recipe)
-
-    inputs = spec.get("inputs", {})
-
-    for (k, inp) in inputs.items():
-        (i_process, i_graph) = procedure_to_graph(ctx, {k: inp})
-        if i_process:
-            g.unify(i_graph)
-            g.connect(i_process, p)
-
-    return (p, g)
-
-
-procedures = find_procedures(
-    cc,
+procedures = cc.find_procedures(
     "red circuit",
-    limit=32,
-    skip_pred=Predicates.uses_process("character"),
+    limit=1,
+    skip_pred=Predicates.uses_any_of_processes([
+        "character",
+        "burnerminer",
+        "stonefurnace",
+    ]),
     stop_pred=Predicates.outputs_any_of([
-        "iron gear",
-        "iron ore",
-        "iron plate",
-        "copper ore",
         "copper plate",
-        "green circuit",
+        "iron plate",
+        "iron ore",
+        "copper ore",
     ]),
 )
 
 
 pprint(res := list(procedures))
-
-
-(_, g) = procedure_to_graph(cc, res[0])
+(_, g) = cc.procedure_to_graph(res[0])
 cc.set_graph("a", g)
