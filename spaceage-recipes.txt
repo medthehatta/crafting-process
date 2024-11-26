@@ -1,0 +1,92 @@
+burner mining drill | character: duration=2
+3 iron plate + 3 iron gear + stone furnace
+
+iron gear | character: duration=0.5
+2 iron plate
+
+stone furnace | character: duration=0.5
+5 stone
+
+iron plate | stone-furnace: duration=3.2
+iron ore
+
+copper plate | stone-furnace: duration=3.2
+copper ore
+
+wooden chest | character: duration=0.5
+2 wood
+
+iron chest | character: duration=0.5
+8 iron plate
+
+2 transport belt | character: duration=0.5
+iron plate + iron gear
+
+burner inserter | character: duration=0.5
+iron plate + iron gear
+
+stone brick | stone-furnace: duration=3.2
+2 stone
+
+firearm magazine | character: duration=1
+4 iron plate
+
+light armor | character: duration=3
+40 iron plate
+
+iron ore | burner-mining-drill: duration=4
+
+copper ore | burner-mining-drill: duration=4
+
+stone | character-mine: duration=2
+
+iron ore | character-mine: duration=2
+
+copper ore | character-mine: duration=2
+
+pipe | character: duration=0.5
+iron plate
+
+2 pipe to ground | character: duration=0.5
+5 iron plate + 10 pipe
+
+offshore pump | character: duration=0.5
+2 iron gear + 3 pipe
+
+boiler | character: duration=0.5
+4 pipe + stone furnace
+
+steam engine | character: duration=0.5
+10 iron plate + 8 iron gear + 5 pipe
+
+2 copper cable | character: duration=0.5
+copper plate
+
+green circuit | character: duration=0.5
+iron plate + 3 copper cable
+
+lab | character: duration=2
+10 iron gear + 10 green circuit + 4 belt
+
+inserter | character: duration=0.5
+iron plate + iron gear + green circuit
+
+2 small electric pole | character: duration=0.5
+wood + 2 copper cable
+
+red science | character: duration=5
+copper plate + iron gear
+
+assembler | character: duration=0.5
+9 iron plate + 5 iron gear + 3 green circuit
+
+underground belt | character: duration=1
+10 iron plate + 5 transport belt
+
+splitter | character: duration=1
+5 iron plate + 5 green circuit + 4 transport belt
+
+electric mining drill | character: duration=2
+10 iron plate + 5 iron gear + 3 green circuit
+
+
