@@ -71,6 +71,9 @@ lab | character: duration=2
 inserter | character: duration=0.5
 iron plate + iron gear + green circuit
 
+long inserter | character: duration=0.5
+iron plate + iron gear + inserter
+
 2 small electric pole | character: duration=0.5
 wood + 2 copper cable
 
@@ -89,4 +92,8 @@ splitter | character: duration=1
 electric mining drill | character: duration=2
 10 iron plate + 5 iron gear + 3 green circuit
 
+stone brick | stone-furnace: duration=3.2
+2 stone
+
+900 kW | steam-engine: duration=1
 

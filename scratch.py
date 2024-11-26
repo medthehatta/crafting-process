@@ -45,31 +45,37 @@ for recipe in cc.find_recipe_using("character"):
     cc.apply_augment_to_recipe(recipe, "assembler-3", "assembler-3")
 
 
-procedures = cc.find_procedures(
-    "red science",
-    limit=1,
-    skip_pred=Predicates.uses_any_of_processes([
-        "character",
-        "character-mine",
-        "assembler-2",
-        "assembler-3",
-    ]),
-    stop_pred=Predicates.outputs_any_of([
-    ]),
-)
+def s(output):
+    procedures = cc.find_procedures(
+        output,
+        limit=1,
+        skip_pred=Predicates.uses_any_of_processes([
+            "character-mine",
+            "character",
+            #"assembler-1",
+            "assembler-2",
+            "assembler-3",
+        ]),
+        stop_pred=Predicates.outputs_any_of([
+            "iron plate",
+            "copper plate",
+        ]),
+    )
 
-print(f"Found {len(procedures)}")
-for p in procedures:
-    print(cc.pull_recipes(p, flat=False))
+    for p in procedures:
+        print(cc.pull_recipes(p, flat=False))
 
+    res = only(procedures)
+    cc.procedure_to_graph(res, "a")
+    milps = cc.milps("a")
 
-res = only(procedures)
-g = cc.procedure_to_graph(res, "a")
-milps = cc.milps("a")
+    if len(milps) > 4:
+        relevant = milps[:2] + milps[-2:]
+    else:
+        relevant = milps
 
-
-for (i, m) in enumerate(milps, start=1):
-    total_processes = sum(c for (c, _, _) in m["counts"])
-    print(f"{i}) {total_processes} processes, {m['leakage']} leak")
-    for c in m["counts"]:
-        print(f"    {c}")
+    for (i, m) in enumerate(relevant, start=1):
+        total_processes = sum(c for (c, _, _) in m["counts"])
+        print(f"{i}) {total_processes} processes, {m['leakage']} leak")
+        for c in m["counts"]:
+            print(f"    {c}")
