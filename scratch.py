@@ -1,8 +1,4 @@
-from itertools import product
 from pprint import pprint
-
-from cytoolz import curry
-from cytoolz import take
 
 from graph import GraphBuilder
 from process import Ingredients
@@ -16,68 +12,64 @@ from ops import CraftingContext
 from utils import only
 
 
-def milps_graph(graph):
-    m = graph.build_matrix()
-    return best_milp_sequence(m["matrix"], m["processes"])
-
-
-with open("krastorio-recipes.txt") as f:
+with open("spaceage-recipes.txt") as f:
     sample = f.read()
-
-augs_sample = """
-assembler 1
-mul_speed 0.5
-add_input 75.5 kWe
-
-"""
-
-#reg = parse_processes(sample.splitlines())
-#
-#
-#gb = GraphBuilder()
-#
-#for p in reg:
-#    print(gb.add_process(p))
-#
-#res = milps_graph(gb)
-#print(list(res))
-
-
-# Add recipe
-# Add recipe to graph
-# Add resource pool to graph
-# Connect processes or resource pools in graph
-# Compute MILP for the graph
 
 
 cc = CraftingContext()
 
 
+assembler_augments = """
+assembler-1
+mul_speed 0.5
+add_input 75.5 kW
+
+assembler-2
+mul_speed 0.75
+add_input 150 kW
+
+assembler-3
+mul_speed 1.25
+add_input 375 kW
+
+"""
+
+
 rec = cc.add_recipes_from_text(sample)
-augs = cc.add_augments_from_text(augs_sample)
+cc.add_augments_from_text(assembler_augments)
+
+# Add assembler variants
+for recipe in cc.find_recipe_using("character"):
+    cc.apply_augment_to_recipe(recipe, "assembler-1", "assembler-1")
+    cc.apply_augment_to_recipe(recipe, "assembler-2", "assembler-2")
+    cc.apply_augment_to_recipe(recipe, "assembler-3", "assembler-3")
 
 
 procedures = cc.find_procedures(
-    "glass",
+    "red science",
     limit=1,
     skip_pred=Predicates.uses_any_of_processes([
         "character",
-        "burnerminer",
-        "stonefurnace",
+        "character-mine",
+        "assembler-2",
+        "assembler-3",
     ]),
     stop_pred=Predicates.outputs_any_of([
-        "copper plate",
-        "iron plate",
-        "iron ore",
-        "copper ore",
     ]),
 )
 
-
+print(f"Found {len(procedures)}")
 for p in procedures:
-    print(cc.pull_recipes(p))
+    print(cc.pull_recipes(p, flat=False))
 
 
 res = only(procedures)
 g = cc.procedure_to_graph(res, "a")
 milps = cc.milps("a")
+
+
+for (i, m) in enumerate(milps, start=1):
+    total_processes = sum(c for (c, _, _) in m["counts"])
+    print(f"{i}) {total_processes} processes, {m['leakage']} leak")
+    for c in m["counts"]:
+        print(f"    {c}")

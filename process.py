@@ -35,6 +35,14 @@ class Process:
         self.inputs = inputs or Ingredients.zero()
         self.duration = duration
 
+    def copy(self, new_name=None):
+        return type(self)(
+            outputs=self.outputs,
+            inputs=self.inputs,
+            duration=self.duration,
+            process=new_name if new_name else self.process,
+        )
+
     @property
     def transfer(self):
         return self.outputs - self.inputs

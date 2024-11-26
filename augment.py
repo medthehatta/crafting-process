@@ -79,6 +79,11 @@ class AugmentedProcess:
         self._process = process
         self.augments = augments or []
 
+    def with_augment(self, augment, new_name=None):
+        new_process = self._process.copy(new_name=new_name)
+        new = type(self)(new_process, augments=self.augments + [augment])
+        return new
+
     def _augmented(self):
         p = self._process
         for augment in self.augments:

@@ -92,7 +92,7 @@ class CraftingContext:
         # Convert the recipes in the recipe dict to dicts themselves
         return {k: v.to_dict() for (k, v) in recipe_dict.items()}
 
-    def pull_recipes(self, procedure):
+    def pull_recipes(self, procedure, flat=True):
         if not isinstance(procedure, dict):
             return []
 
@@ -100,10 +100,22 @@ class CraftingContext:
         if "recipe" not in value:
             return []
 
-        return flatten(
-            [[value["recipe"]]] +
-            [self.pull_recipes({k: x}) for (k, x) in value.get("inputs", {}).items()]
-        )
+        if flat:
+            return flatten(
+                [[value["recipe"]]] +
+                [
+                    self.pull_recipes({k: x})
+                    for (k, x) in value.get("inputs", {}).items()
+                ]
+            )
+        else:
+            return (
+                [value["recipe"]] +
+                [
+                    self.pull_recipes({k: x})
+                    for (k, x) in value.get("inputs", {}).items()
+                ]
+            )
 
     #
     # Searching
@@ -119,6 +131,12 @@ class CraftingContext:
         return {
             n: r.to_dict() for (n, r) in self.recipes.items()
             if Predicates.requires_part(resource, r)
+        }
+
+    def find_recipe_using(self, process):
+        return {
+            n: r.to_dict() for (n, r) in self.recipes.items()
+            if Predicates.uses_process(process, r)
         }
 
     #
@@ -179,6 +197,15 @@ class CraftingContext:
         new = g.add_pool(pool_kind)
         return new["name"]
 
+    def apply_augment_to_recipe(self, recipe, augment, new_recipe_name):
+        r = self.get_recipe(recipe)
+        a = self.get_augment(augment)
+        new_recipe = r.with_augment(a)
+        new_recipe._process.process = new_recipe_name
+        name = self.name_recipe(new_recipe)
+        self.recipes[name] = new_recipe
+        return name
+
     def apply_augment_to_process(self, graph, augment_name, process_name):
         g = self.get_graph(graph)
         augment = self.get_augment(augment_name)
@@ -227,6 +254,7 @@ class CraftingContext:
 
         found = self.find_recipe_producing(output)
         if not found:
+            print(f"WARN: No recipe found for {output}")
             return {output: {}}
 
         for (name, recipe) in found.items():
@@ -271,7 +299,11 @@ class CraftingContext:
 
         lst = list(take(hard_limit, itr))
 
-        recipe_histogram = dict(Counter(flatten(self.pull_recipes(procedure) for procedure in lst)))
+        recipe_histogram = dict(
+            Counter(
+                flatten(self.pull_recipes(procedure) for procedure in lst)
+            )
+        )
 
         try:
             next(itr)
@@ -286,7 +318,7 @@ class CraftingContext:
         if len(lst) > limit:
             raise ValueError(
                 f"Resultset is larger than {limit}!  "
-                f"Found {len(lst)} entries instead.  Apply filters."
+                f"Found {len(lst)} entries instead.  Apply filters.  "
                 f"Recipe histogram (next line):\n {recipe_histogram}"
             )
 
