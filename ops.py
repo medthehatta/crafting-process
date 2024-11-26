@@ -32,20 +32,6 @@ def flatten(lst):
     return sum(list(lst), [])
 
 
-def pull_recipes(procedure):
-    if not isinstance(procedure, dict):
-        return []
-
-    value = only(procedure.values())
-    if "recipe" not in value:
-        return []
-
-    return flatten(
-        [[value["recipe"]]] +
-        [pull_recipes({k: x}) for (k, x) in value.get("inputs", {}).items()]
-    )
-
-
 #
 # Classes
 #
@@ -105,6 +91,19 @@ class CraftingContext:
     def recipes_to_dict(self, recipe_dict):
         # Convert the recipes in the recipe dict to dicts themselves
         return {k: v.to_dict() for (k, v) in recipe_dict.items()}
+
+    def pull_recipes(self, procedure):
+        if not isinstance(procedure, dict):
+            return []
+
+        value = only(procedure.values())
+        if "recipe" not in value:
+            return []
+
+        return flatten(
+            [[value["recipe"]]] +
+            [self.pull_recipes({k: x}) for (k, x) in value.get("inputs", {}).items()]
+        )
 
     #
     # Searching
@@ -202,14 +201,16 @@ class CraftingContext:
         g = self.get_graph(graph)
         m = g.build_matrix()
         seq = best_milp_sequence(m["matrix"], m["processes"])
-        for (leak, counts) in seq:
-            yield {
+        return [
+            {
                 "leakage": leak,
                 "counts": [
                     (count, self.describe_recipe(g.processes[name]), name)
                     for (name, count) in counts.items()
                 ],
             }
+            for (leak, counts) in seq
+        ]
 
     def set_graph(self, graph_name, graph):
         self.graphs[graph_name] = graph
@@ -270,7 +271,7 @@ class CraftingContext:
 
         lst = list(take(hard_limit, itr))
 
-        recipe_histogram = dict(Counter(flatten(pull_recipes(procedure) for procedure in lst)))
+        recipe_histogram = dict(Counter(flatten(self.pull_recipes(procedure) for procedure in lst)))
 
         try:
             next(itr)
@@ -291,7 +292,12 @@ class CraftingContext:
 
         return lst
 
-    def procedure_to_graph(self, procedure):
+    def procedure_to_graph(self, procedure, graph):
+        (_, g) = self._procedure_to_graph(procedure)
+        self.set_graph(graph, g)
+        return g
+
+    def _procedure_to_graph(self, procedure):
         g = GraphBuilder()
 
         # {"iron gear": {"recipe": "iron gear", "inputs": [...]}}
@@ -310,7 +316,7 @@ class CraftingContext:
         inputs = spec.get("inputs", {})
 
         for (k, inp) in inputs.items():
-            (i_process, i_graph) = self.procedure_to_graph({k: inp})
+            (i_process, i_graph) = self._procedure_to_graph({k: inp})
             if i_process:
                 g.unify(i_graph)
                 g.connect(i_process, p)

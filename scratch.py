@@ -58,7 +58,7 @@ augs = cc.add_augments_from_text(augs_sample)
 
 
 procedures = cc.find_procedures(
-    "red circuit",
+    "glass",
     limit=1,
     skip_pred=Predicates.uses_any_of_processes([
         "character",
@@ -74,6 +74,10 @@ procedures = cc.find_procedures(
 )
 
 
-pprint(res := list(procedures))
-(_, g) = cc.procedure_to_graph(res[0])
-cc.set_graph("a", g)
+for p in procedures:
+    print(cc.pull_recipes(p))
+
+
+res = only(procedures)
+g = cc.procedure_to_graph(res, "a")
+milps = cc.milps("a")
