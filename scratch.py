@@ -79,3 +79,15 @@ def s(output):
         print(f"{i}) {total_processes} processes, {m['leakage']} leak")
         for c in m["counts"]:
             print(f"    {c}")
+
+
+def main():
+    while inp := input(":: "):
+        try:
+            s(inp)
+        except ValueError:
+            pass
+
+
+if __name__ == "__main__":
+    main()

@@ -5,12 +5,13 @@ from process import Process
 class Augments:
 
     @classmethod
-    @curry
-    def composed(cls, augs, p):
-        p1 = p
-        for aug in augs:
-            p1 = aug(p1)
-        return p
+    def composed(cls, augs):
+        def _composed(p):
+            p1 = p
+            for aug in augs:
+                p1 = aug(p1)
+            return p1
+        return _composed
 
     @classmethod
     @curry

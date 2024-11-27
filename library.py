@@ -206,18 +206,17 @@ def augment_specs_from_lines(lines):
 
 
 def augments_from_records(records):
-    result = {
-        record["name"]: Augments.composed(
-            [
-                getattr(Augments, func_name)(input_arg)
-                for (func_name, input_arg) in record["augments"]
-            ]
-        )
-        for record in records
-    }
+    result = {}
+    for record in records:
+        to_compose = [
+            getattr(Augments, func_name)(input_arg)
+            for (func_name, input_arg) in record["augments"]
+        ]
+        result[record["name"]] = Augments.composed(to_compose)
 
     return result
 
 
 def parse_augments(lines):
-    return augments_from_records(augment_specs_from_lines(lines))
+    records = augment_specs_from_lines(lines)
+    return augments_from_records(records)
