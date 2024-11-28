@@ -45,6 +45,7 @@ class CraftingContext:
         self.augments = {}
         self.recipe_tags = {}
         self.process_tags = {}
+        self.focused_graph = None
 
     #
     # Serialization
@@ -224,8 +225,13 @@ class CraftingContext:
         pool = g.connect_named(source, dest)
         return pool["name"]
 
+    def consolidate(self, graph, process1, process2):
+        g = self.get_graph(graph)
+        g.consolidate_processes(process1, process2)
+
     def milps(self, graph):
         g = self.get_graph(graph)
+        self.focused_graph = graph
         m = g.build_matrix()
         seq = best_milp_sequence(m["matrix"], m["processes"])
         return [
@@ -354,3 +360,35 @@ class CraftingContext:
                 g.connect(i_process, p)
 
         return (p, g)
+
+    def graph_to_procedure(self, graph):
+        g = self.get_graph(graph)
+        # Currently we only support finding a procedure that produces a single
+        # output because I haven't decided what it means for a procedure to
+        # produce multiple yet
+        (proc, res) = only(g.open_outputs)
+        return self._graph_to_procedure(graph, proc)
+
+    def _graph_to_procedure(self, graph, process_name):
+        g = self.get_graph(graph)
+        proc = g.processes[process_name]
+        desired_inputs = list(proc.inputs.nonzero_components)
+        proc_desc = self.describe_recipe(proc)
+        input_pools = [
+            pool for pool in g.pools.values()
+            if process_name in pool.get("outputs", [])
+        ]
+        input_kinds = [pool["kind"] for pool in input_pools]
+        input_processes = flatten([
+            pool["inputs"] for pool in input_pools
+        ])
+
+        unspecified = [
+            [inp] for inp in desired_inputs
+            if inp not in input_kinds
+        ]
+
+        return [proc_desc] + [
+            self._graph_to_procedure(graph, inp)
+            for inp in input_processes
+        ] + unspecified

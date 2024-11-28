@@ -62,27 +62,49 @@ def s(output):
         ]),
     )
 
+    # Print these for debug purposes
     for p in procedures:
         print(cc.pull_recipes(p, flat=False))
 
+    graph_name = output
+
     res = only(procedures)
-    cc.procedure_to_graph(res, "a")
-    milps = cc.milps("a")
+    cc.procedure_to_graph(res, graph_name)
+    milps = cc.milps(graph_name)
 
     if len(milps) > 4:
         relevant = milps[:2] + milps[-2:]
     else:
         relevant = milps
 
+    # Print out the list of the two tightest and two loosest ratio sets
     for (i, m) in enumerate(relevant, start=1):
         total_processes = sum(c for (c, _, _) in m["counts"])
         print(f"{i}) {total_processes} processes, {m['leakage']} leak")
         for c in m["counts"]:
             print(f"    {c}")
 
+    # Print the procedure overview
+    procedure = cc.graph_to_procedure(graph_name)
+    print(procedure)
+
+
+def run_command(cmd):
+    if cmd.startswith("consolidate"):
+        (_, p1, p2) = cmd.split()
+        if not cc.focused_graph:
+            raise ValueError(
+                "Must first perform an operation that sets focused_graph."
+            )
+        cc.consolidate(cc.focused_graph, p1, p2)
+        print("ok")
+
 
 def main():
     while inp := input(":: "):
+        if inp.startswith("."):
+            run_command(inp[1:])
+            continue
         try:
             s(inp)
         except ValueError:
