@@ -19,7 +19,7 @@ wooden chest | character: duration=0.5
 iron chest | character: duration=0.5
 8 iron plate
 
-2 transport belt | character: duration=0.5
+2 belt | character: duration=0.5
 iron plate + iron gear
 
 burner inserter | character: duration=0.5
@@ -84,10 +84,10 @@ assembler | character: duration=0.5
 9 iron plate + 5 iron gear + 3 green circuit
 
 underground belt | character: duration=1
-10 iron plate + 5 transport belt
+10 iron plate + 5 belt
 
 splitter | character: duration=1
-5 iron plate + 5 green circuit + 4 transport belt
+5 iron plate + 5 green circuit + 4 belt
 
 electric mining drill | character: duration=2
 10 iron plate + 5 iron gear + 3 green circuit
