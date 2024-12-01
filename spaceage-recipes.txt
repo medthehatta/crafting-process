@@ -7,10 +7,10 @@ iron gear | character: duration=0.5
 stone furnace | character: duration=0.5
 5 stone
 
-iron plate | stone-furnace: duration=3.2
+iron plate | furnace: duration=3.2
 iron ore
 
-copper plate | stone-furnace: duration=3.2
+copper plate | furnace: duration=3.2
 copper ore
 
 wooden chest | character: duration=0.5
@@ -25,9 +25,6 @@ iron plate + iron gear
 burner inserter | character: duration=0.5
 iron plate + iron gear
 
-stone brick | stone-furnace: duration=3.2
-2 stone
-
 firearm magazine | character: duration=1
 4 iron plate
 
@@ -37,6 +34,8 @@ light armor | character: duration=3
 iron ore | burner-mining-drill: duration=4
 
 copper ore | burner-mining-drill: duration=4
+
+stone | burner-mining-drill: duration=4
 
 stone | character-mine: duration=2
 
@@ -94,13 +93,34 @@ splitter | character: duration=1
 electric mining drill | character: duration=2
 10 iron plate + 5 iron gear + 3 green circuit
 
-stone brick | stone-furnace: duration=3.2
+stone brick | furnace: duration=3.2
 2 stone
 
-900 kW | steam-engine: duration=1
+1800 kWe | boiler-2-gen: duration=1
+1.8 MJf + 6 water
+
+1200 water | offshore-pump: duration=1
+
+4 MJf | burn-coal: duration=1
+coal
 
 green science | character: duration=6
 belt + inserter
+
+military science | character: duration=10
+grenade + red ammo + 2 walls
+
+grenade | character: duration=8
+10 coal + 5 iron plate
+
+red ammo | character: duration=3
+5 copper plate + yellow ammo + steel plate
+
+yellow ammo | character: duration=1
+4 iron plate
+
+2 walls | character: duration=1
+5 stone brick
 
 turret | character: duration=10
 20 iron plate + 10 copper plate + 10 iron gear
@@ -108,7 +128,7 @@ turret | character: duration=10
 engine | character: duration=10
 steel plate + iron gear + pipe
 
-steel plate | stone-furnace: duration=16
+steel plate | furnace: duration=16
 5 iron plate
 
 storage tank | character: duration=3
@@ -142,8 +162,7 @@ red circuit | character: duration=6
 2 plastic + 4 copper cable + 2 green circuit
 
 oil | pumpjack: duration=0.04
-90 kW
+90 kWe
 
 2 explosives | chemical-plant: duration=4
 coal + sulfur + 10 water
-

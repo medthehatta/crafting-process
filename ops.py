@@ -346,6 +346,9 @@ class CraftingContext:
                 f"Recipe histogram (next line):\n {recipe_histogram}"
             )
 
+        elif len(lst) == 0:
+            raise ValueError("Resultset is empty!")
+
         return lst
 
     def procedure_to_graph(self, procedure, graph):
@@ -391,7 +394,9 @@ class CraftingContext:
         g = self.get_graph(graph)
         proc = g.processes[process_name]
         desired_inputs = list(proc.inputs.nonzero_components)
-        proc_desc = self.describe_recipe(proc) + f" ({process_name})"
+        output_names = proc.outputs.nonzero_components
+        proc_desc = " + ".join(output_names) + f" v. {process_name}"
+
         input_pools = [
             pool for pool in g.pools.values()
             if process_name in pool.get("outputs", [])

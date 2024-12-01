@@ -20,34 +20,41 @@ with open("spaceage-recipes.txt") as f:
 cc = CraftingContext()
 
 
-assembler_augments = """
+augment_text = """
 assembler-1
 mul_speed 0.5
-add_input 75.5 kW
+add_input 75.5 kWe
 
 assembler-2
 mul_speed 0.75
-add_input 150 kW
+add_input 150 kWe
 
 assembler-3
 mul_speed 1.25
-add_input 375 kW
+add_input 375 kWe
 
 chemical-plant
-add_input 217 kW
+add_input 217 kWe
 
 burner-mining-drill
 mul_speed 0.25
 
 electric-mining-drill
 mul_speed 0.5
-add_input 90 kW
+add_input 90 kWe
+
+stone-furnace
+add_input 0.0225 coal
+
+steel-furnace
+mul_speed 2
+add_input 0.0225 coal
 
 """
 
 
 rec = cc.add_recipes_from_text(sample)
-cc.add_augments_from_text(assembler_augments)
+cc.add_augments_from_text(augment_text)
 
 # Add assembler variants
 for recipe in cc.find_recipe_using("character"):
@@ -64,23 +71,17 @@ for recipe in cc.find_recipe_using("burner-mining-drill"):
     cc.apply_augment_to_recipe(recipe, "electric-mining-drill", "electric-mining-drill")
     cc.apply_augment_to_recipe(recipe, "burner-mining-drill", replace=True)
 
+for recipe in cc.find_recipe_using("furnace"):
+    cc.apply_augment_to_recipe(recipe, "stone-furnace", "stone-furnace")
+    cc.apply_augment_to_recipe(recipe, "steel-furnace", "steel-furnace")
 
-def get_procedure(output):
+
+def get_procedure(output, skip_pred=None, stop_pred=None, num_keep=4):
     procedures = cc.find_procedures(
         output,
         limit=1,
-        skip_pred=Predicates.uses_any_of_processes([
-            "character-mine",
-            "character",
-            #"assembler-1",
-            "assembler-2",
-            "assembler-3",
-            "burner-mining-drill",
-        ]),
-        stop_pred=Predicates.outputs_any_of([
-            "kW",
-            "coal",
-        ]),
+        skip_pred=skip_pred,
+        stop_pred=stop_pred,
     )
 
     # Print these for debug purposes
@@ -91,15 +92,16 @@ def get_procedure(output):
 
     res = only(procedures)
     cc.procedure_to_graph(res, graph_name)
-    resolve_graph(cc, graph_name)
+    resolve_graph(cc, graph_name, num_keep=num_keep)
 
 
-def resolve_graph(cc, graph_name):
+def resolve_graph(cc, graph_name, num_keep=4):
     g = cc.get_graph(graph_name)
     milps = cc.milps(graph_name)
 
-    if len(milps) > 4:
-        relevant = milps[:2] + milps[-2:]
+    if len(milps) > num_keep:
+        head = num_keep - 2
+        relevant = milps[:head] + milps[-2:]
     else:
         relevant = milps
 
@@ -126,8 +128,13 @@ def resolve_graph(cc, graph_name):
 
 def main():
     while inp := input(":: "):
-        if inp == ".show":
-            resolve_graph(cc, cc.focused_graph)
+        if inp.startswith(".show"):
+            spl = inp.strip().split(" ", 1)
+            if len(spl) > 1:
+                (_, num) = spl
+            else:
+                num = 4
+            resolve_graph(cc, cc.focused_graph, int(num))
         elif inp.startswith(".consolidate"):
             processes = inp.strip().split()[1:]
             a = processes[0]
@@ -153,4 +160,24 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    get_procedure(
+        "military science",
+        skip_pred=Predicates.uses_any_of_processes([
+            "character-mine",
+            "character",
+            #"assembler-1",
+            "assembler-2",
+            "assembler-3",
+            "burner-mining-drill",
+            "furnace",
+            "stone-furnace",
+        ]),
+        stop_pred=Predicates.outputs_any_of([
+            "coal",
+            "oil",
+            "kWe",
+            "iron plate",
+            "copper plate",
+        ]),
+        num_keep=4,
+    )
