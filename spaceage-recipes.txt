@@ -44,6 +44,8 @@ iron ore | character-mine: duration=2
 
 copper ore | character-mine: duration=2
 
+coal | burner-mining-drill: duration=4
+
 pipe | character: duration=0.5
 iron plate
 
@@ -96,4 +98,52 @@ stone brick | stone-furnace: duration=3.2
 2 stone
 
 900 kW | steam-engine: duration=1
+
+green science | character: duration=6
+belt + inserter
+
+turret | character: duration=10
+20 iron plate + 10 copper plate + 10 iron gear
+
+engine | character: duration=10
+steel plate + iron gear + pipe
+
+steel plate | stone-furnace: duration=16
+5 iron plate
+
+storage tank | character: duration=3
+20 iron plate + 5 steel plate
+
+pumpjack | character: duration=5
+5 steel plate + 10 pipe + 10 iron gear + 5 green circuit
+
+45 petrol | oil-refinery: duration=5
+100 oil
+
+solid fuel | chemical-plant: duration=1
+20 petrol
+
+oil refinery | character: duration=8
+15 steel plate + 10 iron gear + 10 green circuit + 10 pipe + 10 stone brick
+
+chemical plant | character: duration=5
+5 steel plate + 5 iron gear + 5 green circuit + 5 pipe
+
+50 sulfuric acid | chemical-plant: duration=1
+iron plate + 5 sulfur + 100 water
+
+sulfur | chemical-plant: duration=1
+30 water + 30 petrol
+
+2 plastic | chemical-plant: duration=1
+coal + 20 petrol
+
+red circuit | character: duration=6
+2 plastic + 4 copper cable + 2 green circuit
+
+oil | pumpjack: duration=0.04
+90 kW
+
+2 explosives | chemical-plant: duration=4
+coal + sulfur + 10 water
 

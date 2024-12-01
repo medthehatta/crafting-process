@@ -198,12 +198,22 @@ class CraftingContext:
         new = g.add_pool(pool_kind)
         return new["name"]
 
-    def apply_augment_to_recipe(self, recipe, augment, new_recipe_name):
+    def apply_augment_to_recipe(
+        self,
+        recipe,
+        augment,
+        new_recipe_name=None,
+        replace=False,
+    ):
         r = self.get_recipe(recipe)
         a = self.get_augment(augment)
         new_recipe = r.with_augment(a)
-        new_recipe._process.process = new_recipe_name
-        name = self.name_recipe(new_recipe)
+        if new_recipe_name:
+            new_recipe._process.process = new_recipe_name
+        if replace:
+            name = recipe
+        else:
+            name = self.name_recipe(new_recipe)
         self.recipes[name] = new_recipe
         return name
 
@@ -228,6 +238,14 @@ class CraftingContext:
     def consolidate(self, graph, process1, process2):
         g = self.get_graph(graph)
         g.consolidate_processes(process1, process2)
+
+    def transfer_rates(self, graph):
+        g = self.get_graph(graph)
+        dangling = g.open_outputs + g.open_inputs
+        return Ingredients.sum(
+            g.processes[name].transfer_rate.project(kind)
+            for (name, kind) in dangling
+        )
 
     def milps(self, graph):
         g = self.get_graph(graph)
@@ -373,7 +391,7 @@ class CraftingContext:
         g = self.get_graph(graph)
         proc = g.processes[process_name]
         desired_inputs = list(proc.inputs.nonzero_components)
-        proc_desc = self.describe_recipe(proc)
+        proc_desc = self.describe_recipe(proc) + f" ({process_name})"
         input_pools = [
             pool for pool in g.pools.values()
             if process_name in pool.get("outputs", [])
