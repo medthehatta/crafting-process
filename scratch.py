@@ -75,6 +75,7 @@ def get_procedure(output):
             #"assembler-1",
             "assembler-2",
             "assembler-3",
+            "burner-mining-drill",
         ]),
         stop_pred=Predicates.outputs_any_of([
             "kW",
@@ -146,7 +147,8 @@ def main():
         else:
             try:
                 get_procedure(inp)
-            except ValueError:
+            except ValueError as err:
+                print(err)
                 pass
 
 
