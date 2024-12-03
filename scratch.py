@@ -23,32 +23,32 @@ cc = CraftingContext()
 augment_text = """
 assembler-1
 mul_speed 0.5
-add_input 75.5 kWe
+add_input_rate 75.5 kWe
 
 assembler-2
 mul_speed 0.75
-add_input 150 kWe
+add_input_rate 150 kWe
 
 assembler-3
 mul_speed 1.25
-add_input 375 kWe
+add_input_rate 375 kWe
 
 chemical-plant
-add_input 217 kWe
+add_input_rate 217 kWe
 
 burner-mining-drill
 mul_speed 0.25
 
 electric-mining-drill
 mul_speed 0.5
-add_input 90 kWe
+add_input_rate 90 kWe
 
 stone-furnace
-add_input 0.0225 coal
+add_input_rate 0.0225 coal
 
 steel-furnace
 mul_speed 2
-add_input 0.0225 coal
+add_input_rate 0.0225 coal
 
 """
 
@@ -126,6 +126,56 @@ def resolve_graph(cc, graph_name, num_keep=4):
     print(json.dumps(procedure))
 
 
+def get_batch_procedure(output, skip_pred=None, stop_pred=None, num_keep=4):
+    procedures = cc.find_procedures(
+        output,
+        limit=1,
+        skip_pred=skip_pred,
+        stop_pred=stop_pred,
+    )
+
+    # Print these for debug purposes
+    for p in procedures:
+        print(cc.pull_recipes(p, flat=False))
+
+    graph_name = output
+
+    res = only(procedures)
+    cc.procedure_to_graph(res, graph_name)
+    resolve_batch_graph(cc, graph_name, num_keep=num_keep)
+
+
+def resolve_batch_graph(cc, graph_name, num_keep=4):
+    g = cc.get_graph(graph_name)
+    milps = cc.batch_milps(graph_name)
+
+    if len(milps) > num_keep:
+        head = num_keep - 2
+        relevant = milps[:head] + milps[-2:]
+    else:
+        relevant = milps
+
+    # Print out the list of the two tightest and two loosest ratio sets
+    for (i, m) in enumerate(relevant, start=1):
+        total_processes = sum(c for (c, _, _) in m["counts"])
+        count_by_process = {name: count for (count, _, name) in m["counts"]}
+        dangling = g.open_outputs + g.open_inputs
+        transfer = Ingredients.sum(
+            count_by_process[name] * g.processes[name].transfer.project(kind)
+            for (name, kind) in dangling
+        )
+        print(
+            f"{i}) {total_processes} processes, {m['leakage']} leak\n"
+            f"    {transfer}"
+        )
+        for c in m["counts"]:
+            print(f"    {c}")
+
+    # Print the procedure overview
+    procedure = cc.graph_to_procedure(graph_name)
+    print(json.dumps(procedure))
+
+
 def main():
     while inp := input(":: "):
         if inp.startswith(".show"):
@@ -160,8 +210,8 @@ def main():
 
 
 if __name__ == "__main__":
-    get_procedure(
-        "military science",
+    get_batch_procedure(
+        "red circuit",
         skip_pred=Predicates.uses_any_of_processes([
             "character-mine",
             "character",
@@ -181,3 +231,4 @@ if __name__ == "__main__":
         ]),
         num_keep=4,
     )
+

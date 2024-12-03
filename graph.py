@@ -303,3 +303,33 @@ class GraphBuilder:
             "processes": processes,
             "pools": pools,
         }
+
+    def build_batch_matrix(self):
+        matrix = []
+
+        pool_items = list(self.pools.items())
+        pools = [p for (p, _) in pool_items]
+        process_items = list(self.processes.items())
+        processes = [p for (p, _) in process_items]
+
+        for (pool_name, pool) in pool_items:
+            kind = pool["kind"]
+            row = []
+
+            for (process_name, process) in process_items:
+                if process_name in pool["inputs"]:
+                    volume = process.transfer
+                    row.append(volume[kind])
+                elif process_name in pool["outputs"]:
+                    volume = process.transfer
+                    row.append(volume[kind])
+                else:
+                    row.append(0)
+
+            matrix.append(row)
+
+        return {
+            "matrix": matrix,
+            "processes": processes,
+            "pools": pools,
+        }

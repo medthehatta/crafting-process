@@ -176,6 +176,8 @@ def augment_specs_from_lines(lines):
         "mul_outputs": float,
         "add_input": Ingredients.parse,
         "add_output": Ingredients.parse,
+        "add_input_rate": Ingredients.parse,
+        "add_output_rate": Ingredients.parse,
     }
 
     records = []

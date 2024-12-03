@@ -263,6 +263,22 @@ class CraftingContext:
             for (leak, counts) in seq
         ]
 
+    def batch_milps(self, graph):
+        g = self.get_graph(graph)
+        self.focused_graph = graph
+        m = g.build_batch_matrix()
+        seq = best_milp_sequence(m["matrix"], m["processes"])
+        return [
+            {
+                "leakage": leak,
+                "counts": [
+                    (count, self.describe_recipe(g.processes[name]), name)
+                    for (name, count) in counts.items()
+                ],
+            }
+            for (leak, counts) in seq
+        ]
+
     def set_graph(self, graph_name, graph):
         self.graphs[graph_name] = graph
         return graph_name

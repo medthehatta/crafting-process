@@ -65,9 +65,29 @@ class Augments:
 
     @classmethod
     @curry
+    def add_input_rate(cls, more_in, p):
+        return Process(
+            p.outputs,
+            inputs=p.inputs + p.duration*more_in,
+            duration=p.duration,
+            process=p.process,
+        )
+
+    @classmethod
+    @curry
     def add_output(cls, more_out, p):
         return Process(
             p.outputs + more_out,
+            inputs=p.inputs,
+            duration=p.duration,
+            process=p.process,
+        )
+
+    @classmethod
+    @curry
+    def add_output_rate(cls, more_out, p):
+        return Process(
+            p.outputs + p.duration*more_out,
             inputs=p.inputs,
             duration=p.duration,
             process=p.process,
