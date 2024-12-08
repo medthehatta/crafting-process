@@ -76,7 +76,7 @@ for recipe in cc.find_recipe_using("furnace"):
     cc.apply_augment_to_recipe(recipe, "steel-furnace", "steel-furnace")
 
 
-def get_procedure(output, skip_pred=None, stop_pred=None, num_keep=4):
+def get_procedure(cc, output, skip_pred=None, stop_pred=None):
     procedures = cc.find_procedures(
         output,
         limit=1,
@@ -92,7 +92,7 @@ def get_procedure(output, skip_pred=None, stop_pred=None, num_keep=4):
 
     res = only(procedures)
     cc.procedure_to_graph(res, graph_name)
-    resolve_graph(cc, graph_name, num_keep=num_keep)
+    return graph_name
 
 
 def resolve_graph(cc, graph_name, num_keep=4):
@@ -122,27 +122,11 @@ def resolve_graph(cc, graph_name, num_keep=4):
             print(f"    {c}")
 
     # Print the procedure overview
-    procedure = cc.graph_to_procedure(graph_name)
-    print(json.dumps(procedure))
-
-
-def get_batch_procedure(output, skip_pred=None, stop_pred=None, num_keep=4):
-    procedures = cc.find_procedures(
-        output,
-        limit=1,
-        skip_pred=skip_pred,
-        stop_pred=stop_pred,
-    )
-
-    # Print these for debug purposes
-    for p in procedures:
-        print(cc.pull_recipes(p, flat=False))
-
-    graph_name = output
-
-    res = only(procedures)
-    cc.procedure_to_graph(res, graph_name)
-    resolve_batch_graph(cc, graph_name, num_keep=num_keep)
+    try:
+        procedure = cc.graph_to_procedure(graph_name)
+        pprint(procedure, indent=2)
+    except ValueError:
+        print("[suppressed due to multi-output process]")
 
 
 def resolve_batch_graph(cc, graph_name, num_keep=4):
@@ -172,8 +156,11 @@ def resolve_batch_graph(cc, graph_name, num_keep=4):
             print(f"    {c}")
 
     # Print the procedure overview
-    procedure = cc.graph_to_procedure(graph_name)
-    print(json.dumps(procedure))
+    try:
+        procedure = cc.graph_to_procedure(graph_name)
+        pprint(procedure, indent=2)
+    except ValueError:
+        print("[suppressed due to multi-output process]")
 
 
 def main():
@@ -209,9 +196,59 @@ def main():
                 pass
 
 
+def oil_refining_with_cracking(cc):
+    gn = "oil refining with cracking"
+    cc.get_graph(gn)
+
+    def recipe(name):
+        return cc.add_recipe_to_graph(gn, name)
+
+    def link(a, b):
+        return cc.connect(gn, a, b)
+
+    def only_recipe_producing(component):
+        return recipe(only(cc.find_recipe_producing(component).keys()))
+
+    aop = only_recipe_producing("heavy oil")
+    lub = only_recipe_producing("lubricant")
+    sul = only_recipe_producing("sulfur")
+    crack = recipe("petrol via light-oil-cracking")
+
+    link(aop, lub)
+    link(aop, sul)
+    link(aop, crack)
+    link(crack, sul)
+
+    return gn
+
+
+def oil_refining_no_cracking(cc):
+    gn = "oil refining no cracking"
+    cc.get_graph(gn)
+
+    def recipe(name):
+        return cc.add_recipe_to_graph(gn, name)
+
+    def link(a, b):
+        return cc.connect(gn, a, b)
+
+    def only_recipe_producing(component):
+        return recipe(only(cc.find_recipe_producing(component).keys()))
+
+    aop = only_recipe_producing("heavy oil")
+    lub = only_recipe_producing("lubricant")
+    sul = only_recipe_producing("sulfur")
+
+    link(aop, lub)
+    link(aop, sul)
+
+    return gn
+
+
 if __name__ == "__main__":
-    get_batch_procedure(
-        "red circuit",
+    g1 = get_procedure(
+        cc,
+        "sulfur",
         skip_pred=Predicates.uses_any_of_processes([
             "character-mine",
             "character",
@@ -221,6 +258,7 @@ if __name__ == "__main__":
             "burner-mining-drill",
             "furnace",
             "stone-furnace",
+            "advanced-oil-processing",
         ]),
         stop_pred=Predicates.outputs_any_of([
             "coal",
@@ -228,7 +266,11 @@ if __name__ == "__main__":
             "kWe",
             "iron plate",
             "copper plate",
+            "plastic",
+            "steel plate",
+            "stone",
         ]),
-        num_keep=4,
     )
-
+    g2 = oil_refining_with_cracking(cc)
+    g3 = oil_refining_no_cracking(cc)
+    resolve_graph(cc, g2, num_keep=2)

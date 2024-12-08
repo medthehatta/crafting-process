@@ -17,7 +17,7 @@ class GraphBuilder:
         new = cls()
         new.processes = {**left.processes, **right.processes}
         new.pools = {**left.pools, **right.pools}
-        new.pool_aliasess = {**left.pool_aliasess, **right.pool_aliasess}
+        new.pool_aliases = {**left.pool_aliases, **right.pool_aliases}
         new.processes = {**left.processes, **right.processes}
         new.open_inputs = left.open_inputs + right.open_inputs
         new.open_outputs = left.open_outputs + right.open_outputs

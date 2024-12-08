@@ -166,3 +166,34 @@ oil | pumpjack: duration=0.04
 
 2 explosives | chemical-plant: duration=4
 coal + sulfur + 10 water
+
+2 blue science | character: duration=24
+sulfur + 3 red circuit + 2 engine
+
+rocket | character: duration=4
+2 iron plate + explosives
+
+explosives | chemical-plant: duration=4
+coal + sulfur + 10 water
+
+battery | chemical-plant: duration=4
+iron plate + copper plate + 20 sulfuric acid
+
+fast inserter | character: duration=0.5
+2 iron plate + 2 green circuit + inserter
+
+electric furnace | character: duration=5
+10 steel plate + 5 red circuit + 10 stone brick
+
+bulk inserter | character: duration=0.5
+15 iron gear + 15 green circuit + red circuit + fast inserter
+
+10 lubricant | chemical-plant: duration=1
+10 heavy oil
+
+25 heavy oil + 45 light oil + 55 petrol | advanced-oil-processing: duration=5
+50 water + 100 oil
+
+20 petrol | light-oil-cracking: duration=2
+30 water + 30 light oil
+
