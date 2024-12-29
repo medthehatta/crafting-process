@@ -107,7 +107,7 @@ coal
 green science | character: duration=6
 belt + inserter
 
-military science | character: duration=10
+2 military science | character: duration=10
 grenade + red ammo + 2 walls
 
 grenade | character: duration=8
@@ -196,4 +196,40 @@ bulk inserter | character: duration=0.5
 
 20 petrol | light-oil-cracking: duration=2
 30 water + 30 light oil
+
+logistics bot | character: duration=0.5
+2 red circuit + flying robot frame
+
+construction bot | character: duration=0.5
+2 green circuit + flying robot frame
+
+flying robot frame | character: duration=20
+steel plate + 2 battery + 3 green circuit + electric engine
+
+electric engine | character: duration=10
+2 green circuit + engine + 15 lubricant
+
+roboport | character: duration=5
+45 steel plate + 45 iron gear + 45 red circuit
+
+yellow science | character: duration=21
+2 blue circuit + flying robot frame + 3 low density structure
+
+blue circuit | character: duration=10
+20 green circuit + 2 red circuit + 5 sulfuric acid
+
+low density structure | character: duration=15
+20 copper plate + 2 steel plate + 5 plastic
+
+10 concrete | character: duration=10
+iron ore + 5 stone brick + 100 water
+
+centrifuge | character: duration=4
+50 steel plate + 100 iron gear + 100 red circuit + 100 concrete
+
+3 purple science | character: duration=21
+electric furnace + productivity module
+
+productivity module | character: duration=15
+5 green circuit + 5 red circuit
 

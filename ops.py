@@ -431,3 +431,12 @@ class CraftingContext:
             self._graph_to_procedure(graph, inp)
             for inp in input_processes
         ] + unspecified
+
+    def join_graphs(self, graph1, graph2, new_name=None):
+        if new_name is None:
+            slug = generate_slug(2)
+            new_name = f"{graph1} and {graph2} {slug}"
+        self.graphs[new_name] = (
+            self.get_graph(graph1).unify(self.get_graph(graph2))
+        )
+        return new_name

@@ -93,6 +93,20 @@ class Augments:
             process=p.process,
         )
 
+    @classmethod
+    @curry
+    def increase_energy_pct(cls, pct, p):
+        # FIXME: any way to make it generic?
+        if "kWe" in p.inputs.nonzero_components:
+            return Process(
+                p.outputs,
+                inputs=p.inputs + (pct/100)*p.inputs.project("kWe"),
+                duration=p.duration,
+                process=p.process,
+            )
+        else:
+            return p
+
 
 class AugmentedProcess:
 

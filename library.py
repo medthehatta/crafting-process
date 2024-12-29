@@ -178,6 +178,7 @@ def augment_specs_from_lines(lines):
         "add_output": Ingredients.parse,
         "add_input_rate": Ingredients.parse,
         "add_output_rate": Ingredients.parse,
+        "increase_energy_pct": float,
     }
 
     records = []

@@ -50,6 +50,25 @@ steel-furnace
 mul_speed 2
 add_input_rate 0.0225 coal
 
+triple-speed
+increase_energy_pct 50
+mul_speed 1.2
+increase_energy_pct 50
+mul_speed 1.2
+increase_energy_pct 50
+mul_speed 1.2
+
+triple-prod
+increase_energy_pct 40
+mul_outputs 1.04
+mul_speed 0.95
+increase_energy_pct 40
+mul_outputs 1.04
+mul_speed 0.95
+increase_energy_pct 40
+mul_outputs 1.04
+mul_speed 0.95
+
 """
 
 
@@ -163,6 +182,14 @@ def resolve_batch_graph(cc, graph_name, num_keep=4):
         print("[suppressed due to multi-output process]")
 
 
+def rv(graph_name, num_keep=4):
+    return resolve_graph(cc, graph_name, num_keep=num_keep)
+
+
+def rv_batch(graph_name, num_keep=4):
+    return resolve_batch_graph(cc, graph_name, num_keep=num_keep)
+
+
 def main():
     while inp := input(":: "):
         if inp.startswith(".show"):
@@ -245,15 +272,33 @@ def oil_refining_no_cracking(cc):
     return gn
 
 
+def oil_refining_stub(cc):
+    gn = "oil refining stub"
+    cc.get_graph(gn)
+
+    def recipe(name):
+        return cc.add_recipe_to_graph(gn, name)
+
+    def link(a, b):
+        return cc.connect(gn, a, b)
+
+    def only_recipe_producing(component):
+        return recipe(only(cc.find_recipe_producing(component).keys()))
+
+    only_recipe_producing("heavy oil")
+
+    return gn
+
+
 if __name__ == "__main__":
     g1 = get_procedure(
         cc,
-        "sulfur",
+        "blue circuit",
         skip_pred=Predicates.uses_any_of_processes([
             "character-mine",
             "character",
-            #"assembler-1",
-            "assembler-2",
+            "assembler-1",
+            #"assembler-2",
             "assembler-3",
             "burner-mining-drill",
             "furnace",
@@ -261,16 +306,10 @@ if __name__ == "__main__":
             "advanced-oil-processing",
         ]),
         stop_pred=Predicates.outputs_any_of([
-            "coal",
-            "oil",
             "kWe",
-            "iron plate",
             "copper plate",
+            "iron plate",
             "plastic",
-            "steel plate",
-            "stone",
         ]),
     )
-    g2 = oil_refining_with_cracking(cc)
-    g3 = oil_refining_no_cracking(cc)
-    resolve_graph(cc, g2, num_keep=2)
+    rv(g1)
