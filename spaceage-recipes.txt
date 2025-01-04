@@ -140,8 +140,14 @@ pumpjack | character: duration=5
 45 petrol | oil-refinery: duration=5
 100 oil
 
-solid fuel | chemical-plant: duration=1
+solid fuel | solid-fuel-from-petrol: duration=1
 20 petrol
+
+solid fuel | solid-fuel-from-light-oil: duration=1
+10 light oil
+
+solid fuel | solid-fuel-from-heavy-oil: duration=1
+10 heavy oil
 
 oil refinery | character: duration=8
 15 steel plate + 10 iron gear + 10 green circuit + 10 pipe + 10 stone brick
@@ -196,6 +202,9 @@ bulk inserter | character: duration=0.5
 
 20 petrol | light-oil-cracking: duration=2
 30 water + 30 light oil
+
+30 light oil | heavy-to-light-oil-cracking: duration=2
+30 water + 40 heavy oil
 
 logistics bot | character: duration=0.5
 2 red circuit + flying robot frame
@@ -254,4 +263,6 @@ nuclear reactor | character: duration=8
 heat exchanger | character: duration=3
 100 copper plate + 10 steel plate + 10 pipe
 
+rocket fuel | character: duration=15
+10 solid fuel + 10 light oil
 

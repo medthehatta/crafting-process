@@ -143,7 +143,7 @@ class GraphBuilder:
         else:
             src_pool = src_pools[0]
             dest_pool = dest_pools[0]
-            return self.coalesce_pools(src_pool, dest_pool)
+            return self.coalesce_pools(src_pool["name"], dest_pool["name"])
 
     def connect(self, src, dest, kind=None):
         return self.connect_named(src["name"], dest["name"], kind=kind)
@@ -198,8 +198,12 @@ class GraphBuilder:
                 )
 
     def coalesce_pools(self, pool1_name, pool2_name):
+        if pool1_name == pool1_name:
+            return self.pools[pool1_name]
+
         pool1 = self.pools[pool1_name]
         pool2 = self.pools[pool2_name]
+
         if pool1["kind"] != pool2["kind"]:
             raise ValueError(
                 f"Cannot coalesce pools, kinds "
@@ -213,6 +217,7 @@ class GraphBuilder:
         new_pool["outputs"] = src_pool["outputs"] + dest_pool["outputs"]
         self.pool_aliases[pool1_name] = new_pool["name"]
         self.pool_aliases[pool2_name] = new_pool["name"]
+        breakpoint()
         self.pools.pop(pool1_name)
         self.pools.pop(pool2_name)
         return new_pool

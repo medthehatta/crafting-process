@@ -145,7 +145,7 @@ def resolve_graph(cc, graph_name, num_keep=4):
         procedure = cc.graph_to_procedure(graph_name)
         pprint(procedure, indent=2)
     except ValueError:
-        print("[suppressed due to multi-output process]")
+        print("[suppressed tree view due to multi-output process]")
 
 
 def resolve_batch_graph(cc, graph_name, num_keep=4):
@@ -249,6 +249,39 @@ def oil_refining_with_cracking(cc):
     return gn
 
 
+def rocket_fuel(cc):
+    gn = "rocket fuel custom"
+    cc.get_graph(gn)
+
+    def recipe(name):
+        return cc.add_recipe_to_graph(gn, name)
+
+    def link(a, b):
+        return cc.connect(gn, a, b)
+
+    def only_recipe_producing(component):
+        return recipe(only(cc.find_recipe_producing(component).keys()))
+
+    aop = only_recipe_producing("heavy oil")
+    htol = recipe("light oil via heavy-to-light-oil-cracking")
+    sfuel_lite = recipe("solid fuel via solid-fuel-from-light-oil")
+    sfuel_petrol = recipe("solid fuel via solid-fuel-from-petrol")
+    rfuel = recipe("rocket fuel via assembler-2")
+
+    link(aop, htol)
+    link(aop, sfuel_lite)
+    link(aop, sfuel_petrol)
+    link(aop, rfuel)
+
+    link(htol, sfuel_lite)
+    link(htol, rfuel)
+
+    link(sfuel_petrol, rfuel)
+    link(sfuel_lite, rfuel)
+
+    return gn
+
+
 def oil_refining_no_cracking(cc):
     gn = "oil refining no cracking"
     cc.get_graph(gn)
@@ -291,28 +324,29 @@ def oil_refining_stub(cc):
 
 
 if __name__ == "__main__":
-    g1 = get_procedure(
-        cc,
-        "blue circuit",
-        skip_pred=Predicates.uses_any_of_processes([
-            "character-mine",
-            "character",
-            "assembler-1",
-            #"assembler-2",
-            "assembler-3",
-            "burner-mining-drill",
-            "furnace",
-            "stone-furnace",
-            "advanced-oil-processing",
-        ]),
-        stop_pred=Predicates.outputs_any_of([
-            "kWe",
-            "iron plate",
-            "sulfuric acid",
-            "plastic",
-            "coal",
-            "concrete",
-            "copper plate",
-        ]),
-    )
-    rv(g1)
+    #g1 = get_procedure(
+    #    cc,
+    #    "low density structure",
+    #    skip_pred=Predicates.uses_any_of_processes([
+    #        "character-mine",
+    #        "character",
+    #        "assembler-1",
+    #        #"assembler-2",
+    #        "assembler-3",
+    #        "burner-mining-drill",
+    #        "furnace",
+    #        "stone-furnace",
+    #        "advanced-oil-processing",
+    #    ]),
+    #    stop_pred=Predicates.outputs_any_of([
+    #        "kWe",
+    #        "iron plate",
+    #        "sulfuric acid",
+    #        "plastic",
+    #        "coal",
+    #        "concrete",
+    #        "copper plate",
+    #    ]),
+    #)
+    g2 = rocket_fuel(cc)
+    rv(g2)
