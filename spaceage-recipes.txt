@@ -78,7 +78,7 @@ iron plate + iron gear + inserter
 2 small electric pole | character: duration=0.5
 wood + 2 copper cable
 
-red science | character: duration=5
+3 red science | character: duration=5
 copper plate + iron gear
 
 assembler | character: duration=0.5
@@ -212,7 +212,7 @@ electric engine | character: duration=10
 roboport | character: duration=5
 45 steel plate + 45 iron gear + 45 red circuit
 
-yellow science | character: duration=21
+3 yellow science | character: duration=21
 2 blue circuit + flying robot frame + 3 low density structure
 
 blue circuit | character: duration=10
@@ -228,8 +228,30 @@ centrifuge | character: duration=4
 50 steel plate + 100 iron gear + 100 red circuit + 100 concrete
 
 3 purple science | character: duration=21
-electric furnace + productivity module
+electric furnace + productivity module + 30 rail
+
+2 rail | character: duration=0.5
+stone + steel plate + iron stick
+
+2 iron stick | character: duration=0.5
+iron plate
 
 productivity module | character: duration=15
 5 green circuit + 5 red circuit
+
+10 uranium fuel cell | character: duration=10
+10 iron plate + u235 + 19 u238
+
+7 u235 + 993 u238 | centrifuge: duration=12
+10000 uranium ore + 362 kWe
+
+0.3 uranium ore | uranium-mining: duration=1
+90 kWe + sulfuric acid
+
+nuclear reactor | character: duration=8
+500 copper plate + 500 steel plate + 500 red circuit + 500 concrete
+
+heat exchanger | character: duration=3
+100 copper plate + 10 steel plate + 10 pipe
+
 

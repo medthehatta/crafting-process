@@ -307,9 +307,12 @@ if __name__ == "__main__":
         ]),
         stop_pred=Predicates.outputs_any_of([
             "kWe",
-            "copper plate",
             "iron plate",
+            "sulfuric acid",
             "plastic",
+            "coal",
+            "concrete",
+            "copper plate",
         ]),
     )
     rv(g1)
