@@ -440,3 +440,28 @@ class CraftingContext:
             self.get_graph(graph1).unify(self.get_graph(graph2))
         )
         return new_name
+
+    def graph_context(self, graph_name):
+        return GraphInContext(self, self.get_graph(graph_name))
+
+
+class GraphInContext:
+
+    def __init__(self, ctx, graph_name):
+        self.ctx = ctx
+        self.graph_name = graph_name
+
+    @property
+    def name(self):
+        return self.graph_name
+
+    def recipe(self, name):
+        return self.ctx.add_recipe_to_graph(self.graph_name, name)
+
+    def link(self, a, b):
+        return self.ctx.connect(self.graph_name, a, b)
+
+    def only_recipe_producing(self, component):
+        return self.recipe(
+            only(self.ctx.find_recipe_producing(component).keys())
+        )

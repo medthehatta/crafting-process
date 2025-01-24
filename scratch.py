@@ -282,6 +282,63 @@ def rocket_fuel(cc):
     return gn
 
 
+def make_petrol(cc):
+    gn = "make petrol"
+    cc.get_graph(gn)
+
+    def recipe(name):
+        return cc.add_recipe_to_graph(gn, name)
+
+    def link(a, b):
+        return cc.connect(gn, a, b)
+
+    def only_recipe_producing(component):
+        return recipe(only(cc.find_recipe_producing(component).keys()))
+
+    aop = only_recipe_producing("heavy oil")
+    crack1 = recipe("petrol via light-oil-cracking")
+    crack2 = recipe("light oil via heavy-oil-cracking")
+
+    link(aop, crack1)
+    link(aop, crack2)
+    link(crack2, crack1)
+
+    return gn
+
+
+def make_plastic(cc):
+    gn = "make plastic"
+    cc.get_graph(gn)
+
+    def recipe(name):
+        return cc.add_recipe_to_graph(gn, name)
+
+    def link(a, b):
+        return cc.connect(gn, a, b)
+
+    def only_recipe_producing(component):
+        return recipe(only(cc.find_recipe_producing(component).keys()))
+
+    pump_oil = recipe("oil via pumpjack")
+    mine_coal = recipe("coal via electric-mining-drill")
+
+    aop = only_recipe_producing("heavy oil")
+    crack1 = recipe("petrol via light-oil-cracking")
+    crack2 = recipe("light oil via heavy-oil-cracking")
+    plastic = recipe("plastic via chemical-plant")
+
+    link(pump_oil, aop)
+    link(mine_coal, plastic)
+
+    link(aop, crack1)
+    link(aop, crack2)
+    link(aop, plastic)
+    link(crack2, crack1)
+    link(crack1, plastic)
+
+    return gn
+
+
 def oil_refining_no_cracking(cc):
     gn = "oil refining no cracking"
     cc.get_graph(gn)
@@ -324,29 +381,48 @@ def oil_refining_stub(cc):
 
 
 if __name__ == "__main__":
-    #g1 = get_procedure(
-    #    cc,
-    #    "low density structure",
-    #    skip_pred=Predicates.uses_any_of_processes([
-    #        "character-mine",
-    #        "character",
-    #        "assembler-1",
-    #        #"assembler-2",
-    #        "assembler-3",
-    #        "burner-mining-drill",
-    #        "furnace",
-    #        "stone-furnace",
-    #        "advanced-oil-processing",
-    #    ]),
-    #    stop_pred=Predicates.outputs_any_of([
-    #        "kWe",
-    #        "iron plate",
-    #        "sulfuric acid",
-    #        "plastic",
-    #        "coal",
-    #        "concrete",
-    #        "copper plate",
-    #    ]),
-    #)
-    g2 = rocket_fuel(cc)
-    rv(g2)
+    g1 = get_procedure(
+        cc,
+        "red ammo",
+        skip_pred=Predicates.uses_any_of_processes([
+            "character-mine",
+            "character",
+            "assembler-1",
+            #"assembler-2",
+            "assembler-3",
+            "burner-mining-drill",
+            "furnace",
+            "stone-furnace",
+            "advanced-oil-processing",
+        ]),
+        stop_pred=Predicates.outputs_any_of([
+            "kWe",
+            "iron plate",
+            "sulfuric acid",
+            "coal",
+            "concrete",
+            "copper plate",
+        ]),
+    )
+    rv(g1)
+    # g2 = rocket_fuel(cc)
+    #g3 = make_plastic(cc)
+    #rv(g3)
+
+
+
+
+def zzzzzz(cc):
+    g = cc.graph_context("make petrol")
+
+    aop = g.only_recipe_producing("heavy oil")
+    crack1 = g.recipe("petrol via light-oil-cracking")
+    crack2 = g.recipe("light oil via heavy-oil-cracking")
+
+    g.link(aop, crack1)
+    g.link(aop, crack2)
+    g.link(crack2, crack1)
+
+    return g.name
+
+

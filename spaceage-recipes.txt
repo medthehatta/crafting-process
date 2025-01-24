@@ -149,6 +149,9 @@ solid fuel | solid-fuel-from-light-oil: duration=1
 solid fuel | solid-fuel-from-heavy-oil: duration=1
 10 heavy oil
 
+30 light oil | heavy-oil-cracking: duration=2
+30 water + 40 heavy oil
+
 oil refinery | character: duration=8
 15 steel plate + 10 iron gear + 10 green circuit + 10 pipe + 10 stone brick
 
