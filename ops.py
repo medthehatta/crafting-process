@@ -452,13 +452,43 @@ class CraftingContext:
             for inp in input_processes
         ] + unspecified
 
-    def join_graphs(self, graph1, graph2, new_name=None):
+    def join_graphs(self, graph1, graph2, new_name=None, kind=None):
+        g1 = self.get_graph(graph1)
+        g2 = self.get_graph(graph2)
+
+        # If a kind was not provided, either the graphs should remain disjoint,
+        # or they are expected to have exactly one kind that will connect them.
+        # It is not valid to have multiple compatible kinds between the graphs
+        # and infer the kind.
+        out_kinds = {k: n for (n, k) in g1.open_outputs}
+        in_kinds = {k: n for (n, k) in g2.open_inputs}
+        if not kind:
+            compatible = set(out_kinds.keys()).intersection(in_kinds.keys())
+            if len(compatible) == 0:
+                # If they are incompatible, leave them as disjoint subgraphs
+                pass
+            elif len(compatible) == 1:
+                # If there is one compatible resource, connect it
+                kind = only(compatible)
+            else:
+                # Otherwise, we cannot infer what should be done here.  Fail
+                raise ValueError(
+                    f"Multiple compatible kinds in union of "
+                    f"{graph1} and {graph2}: {compatible}.  Provide the "
+                    f"`kind` when joining them."
+                )
+
         if new_name is None:
             slug = generate_slug(2)
             new_name = f"{graph1} and {graph2} {slug}"
-        self.graphs[new_name] = (
-            self.get_graph(graph1).unify(self.get_graph(graph2))
-        )
+
+        self.graphs[new_name] = g1.union(g1, g2)
+
+        if kind is not None:
+            out_proc = out_kinds[kind]
+            in_proc = in_kinds[kind]
+            self.consolidate(new_name, out_proc, in_proc)
+
         return new_name
 
     def graph_context(self, graph_name):
