@@ -367,6 +367,26 @@ class CraftingContext:
 
         return lst
 
+    def find_unique_procedure_graph(
+        self,
+        output,
+        stop_pred=None,
+        skip_pred=None,
+        hard_limit=1000,
+    ):
+        procedure = only(
+            self.find_procedures(
+                output,
+                stop_pred=stop_pred,
+                skip_pred=skip_pred,
+                limit=1,
+                hard_limit=hard_limit,
+            )
+        )
+        graph_name = output
+        self.procedure_to_graph(procedure, graph_name)
+        return graph_name
+
     def procedure_to_graph(self, procedure, graph):
         (_, g) = self._procedure_to_graph(procedure)
         self.set_graph(graph, g)

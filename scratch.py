@@ -381,8 +381,7 @@ def oil_refining_stub(cc):
 
 
 if __name__ == "__main__":
-    g1 = get_procedure(
-        cc,
+    g1 = cc.find_unique_procedure_graph(
         "red ammo",
         skip_pred=Predicates.uses_any_of_processes([
             "character-mine",
@@ -424,5 +423,4 @@ def zzzzzz(cc):
     g.link(crack2, crack1)
 
     return g.name
-
 
