@@ -381,46 +381,44 @@ def oil_refining_stub(cc):
 
 
 if __name__ == "__main__":
-    g1 = cc.find_unique_procedure_graph(
-        "red ammo",
-        skip_pred=Predicates.uses_any_of_processes([
-            "character-mine",
-            "character",
-            "assembler-1",
-            #"assembler-2",
-            "assembler-3",
-            "burner-mining-drill",
-            "furnace",
-            "stone-furnace",
-            "advanced-oil-processing",
-        ]),
-        stop_pred=Predicates.outputs_any_of([
-            "kWe",
-            "iron plate",
-            "sulfuric acid",
-            "coal",
-            "concrete",
-            "copper plate",
-        ]),
-    )
-    rv(g1)
+    # g1 = cc.find_unique_procedure_graph(
+    #     "red ammo",
+    #     skip_pred=Predicates.uses_any_of_processes([
+    #         "character-mine",
+    #         "character",
+    #         "assembler-1",
+    #         #"assembler-2",
+    #         "assembler-3",
+    #         "burner-mining-drill",
+    #         "furnace",
+    #         "stone-furnace",
+    #         "advanced-oil-processing",
+    #     ]),
+    #     stop_pred=Predicates.outputs_any_of([
+    #         "kWe",
+    #         "iron plate",
+    #         "sulfuric acid",
+    #         "coal",
+    #         "concrete",
+    #         "copper plate",
+    #     ]),
+    # )
+    # rv(g1)
     # g2 = rocket_fuel(cc)
     #g3 = make_plastic(cc)
     #rv(g3)
 
 
-
-
-def zzzzzz(cc):
-    g = cc.graph_context("make petrol")
+    g = cc.graph_context("oil refinery A")
 
     aop = g.only_recipe_producing("heavy oil")
-    crack1 = g.recipe("petrol via light-oil-cracking")
-    crack2 = g.recipe("light oil via heavy-oil-cracking")
+    light_to_petrol = g.recipe("petrol via light-oil-cracking")
+    sulfur = g.only_recipe_producing("sulfur")
+    lube = g.only_recipe_producing("lubricant")
 
-    g.link(aop, crack1)
-    g.link(aop, crack2)
-    g.link(crack2, crack1)
+    g.link(aop, lube)
+    g.link(aop, light_to_petrol)
+    g.link(aop, sulfur)
+    g.link(light_to_petrol, sulfur)
 
-    return g.name
-
+    rv(g.name)
