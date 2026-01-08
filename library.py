@@ -29,10 +29,26 @@ def parse_process(s):
 
 
 def _parse_process_header(s):
+    # It can be valid to provide the entire recipe in the "header" by
+    # separating inputs and outputs with " = ".  So first split off anything
+    # after the " = " and call that inputs
+    equals = re.split(r"\s+=\s+", s)
+
+    match equals:
+        case [h]:
+            pre_equals = h
+            inputs = None
+        case [h, inp]:
+            pre_equals = h
+            inputs = inp
+        case _:
+            raise ValueError(f"Cannot parse: '{s}'")
+
+    # 5 ingredient + 2 other ingredient | attribute1=foo bar | attribute2=3 = 2 thing + foo
     # 5 ingredient + 2 other ingredient | attribute1=foo bar | attribute2=3
     # 5 ingredient + 2 other ingredient | attribute1=foo bar attribute2=3
     # 5 ingredient + 2 other ingredient
-    segments = re.split(r"\s*\|\s*", s)
+    segments = re.split(r"\s*[|]\s*", pre_equals)
 
     # Only the first segment mark `|` is important.  Others are for
     # legibility only.  We ignore the other segment marks by
@@ -67,8 +83,11 @@ def _parse_process_header(s):
         except json.decoder.JSONDecodeError:
             attributes[k] = attributes_raw[start:end].strip()
 
+    input_dict = {"inputs": inputs} if inputs else {}
+
     return {
         "outputs": product_raw,
+        **input_dict,
         **attributes,
     }
 

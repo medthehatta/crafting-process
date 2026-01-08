@@ -46,6 +46,7 @@ class CraftingContext:
         self.recipe_tags = {}
         self.process_tags = {}
         self.focused_graph = None
+        self.warned = {}
 
     #
     # Serialization
@@ -247,6 +248,14 @@ class CraftingContext:
             for (name, kind) in dangling
         )
 
+    def transfer_quantities(self, graph, batch=False):
+        g = self.get_graph(graph)
+        dangling = g.open_outputs + g.open_inputs
+        return Ingredients.sum(
+            g.processes[name].transfer_quantity(batch).project(kind)
+            for (name, kind) in dangling
+        )
+
     def milps(self, graph):
         g = self.get_graph(graph)
         self.focused_graph = graph
@@ -292,23 +301,45 @@ class CraftingContext:
         stop_pred = stop_pred or (lambda x: False)
         skip_pred = skip_pred or (lambda x: False)
 
+        self.recipes["_"] = AugmentedProcess(parse_processes(["_ = " + output.strip()])[0])
+        return self._iterate_possible_procedures(
+            "_",
+            stop_pred=stop_pred,
+            skip_pred=skip_pred,
+        )
+
+    def _iterate_possible_procedures(
+        self,
+        output,
+        stop_pred=None,
+        skip_pred=None,
+    ):
+        stop_pred = stop_pred or (lambda x: False)
+        skip_pred = skip_pred or (lambda x: False)
+
         found = self.find_recipe_producing(output)
         if not found:
-            print(f"WARN: No recipe found for {output}")
-            return {output: {}}
+            if output not in self.warned:
+                print(f"WARN: No recipe found for {output}")
+                self.warned[output] = True
+            yield {output: {}}
+            return
 
-        for (name, recipe) in found.items():
-            if stop_pred(self.recipes[name]):
+        for name in found.keys():
+            recipe = self.recipes[name]
+            recipe_dict = recipe.to_dict()
+
+            if stop_pred(recipe):
                 yield {output: {}}
                 return
 
-            elif skip_pred(self.recipes[name]):
+            elif skip_pred(recipe):
                 continue
 
             else:
-                inputs = [name for (name, _) in recipe["inputs"]]
+                inputs = [name for (name, _) in recipe_dict["inputs"]]
                 constituent_itr = [
-                    self.iterate_possible_procedures(
+                    self._iterate_possible_procedures(
                         inp,
                         stop_pred=stop_pred,
                         skip_pred=skip_pred,
@@ -387,6 +418,28 @@ class CraftingContext:
         self.procedure_to_graph(procedure, graph_name)
         return graph_name
 
+    def find_procedure_graphs(
+        self,
+        output,
+        stop_pred=None,
+        skip_pred=None,
+        hard_limit=1000,
+    ):
+        result = []
+        procedures = self.find_procedures(
+            output,
+            stop_pred=stop_pred,
+            skip_pred=skip_pred,
+            limit=1,
+            hard_limit=hard_limit,
+        )
+        for (i, procedure) in enumerate(procedures, start=1):
+            graph_name = f"{output}#{i}"
+            self.procedure_to_graph(procedure, graph_name)
+            result.append(graph_name)
+
+        return result
+
     def procedure_to_graph(self, procedure, graph):
         (_, g) = self._procedure_to_graph(procedure)
         self.set_graph(graph, g)
@@ -431,7 +484,7 @@ class CraftingContext:
         proc = g.processes[process_name]
         desired_inputs = list(proc.inputs.nonzero_components)
         output_names = proc.outputs.nonzero_components
-        proc_desc = " + ".join(output_names) + f" v. {process_name}"
+        proc_desc = " + ".join(output_names) + f" (v. {process_name})"
 
         input_pools = [
             pool for pool in g.pools.values()
@@ -451,6 +504,30 @@ class CraftingContext:
             self._graph_to_procedure(graph, inp)
             for inp in input_processes
         ] + unspecified
+
+    def process_depths_from_graph(self, graph):
+        g = self.get_graph(graph)
+        # Currently we only support finding a procedure that produces a single
+        # output because I haven't decided what it means for a procedure to
+        # produce multiple yet
+        (proc, res) = only(g.open_outputs)
+        return self._process_depths_from_graph(graph, proc)
+
+    def _process_depths_from_graph(self, graph, process_name, depth=0):
+        g = self.get_graph(graph)
+        input_pools = [
+            pool for pool in g.pools.values()
+            if process_name in pool.get("outputs", [])
+        ]
+        input_processes = flatten([
+            pool["inputs"] for pool in input_pools
+        ])
+
+        other = [
+            self._process_depths_from_graph(graph, inp, depth=depth+1)
+            for inp in input_processes
+        ]
+        return _join_dicts([{process_name: depth}] + other)
 
     def join_graphs(self, graph1, graph2, new_name=None, kind=None):
         g1 = self.get_graph(graph1)

@@ -56,6 +56,12 @@ class Process:
                 "Process which has no duration has no transfer rate"
             )
 
+    def transfer_quantity(self, batch=False):
+        if batch:
+            return self.transfer
+        else:
+            return self.transfer_rate
+
     def to_dict(self):
         return {
             "outputs": [(n, c) for (n, c, _) in self.outputs.triples()],
