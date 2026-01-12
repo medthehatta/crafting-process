@@ -79,7 +79,7 @@ requires-dist = [
     { name = "coolname", specifier = ">=2.2.0" },
     { name = "cytoolz", specifier = ">=1.0.0" },
     { name = "fastapi", specifier = ">=0.115.5" },
-    { name = "formal-vector", editable = "../formal-vector" },
+    { name = "formal-vector", git = "https://github.com/medthehatta/formal-vector" },
     { name = "numpy", specifier = ">=2.1.3" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "scipy", specifier = ">=1.14.1" },
@@ -170,7 +170,7 @@ wheels = [
 [[package]]
 name = "formal-vector"
 version = "0.1.1"
-source = { editable = "../formal-vector" }
+source = { git = "https://github.com/medthehatta/formal-vector#d963bd44072c5d2e94ee8c85e8ee229bc0e09fbd" }
 
 [[package]]
 name = "h11"

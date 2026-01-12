@@ -16,4 +16,4 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-formal-vector = { path = "../formal-vector", editable = true }
+formal-vector = { git = "https://github.com/medthehatta/formal-vector" }
