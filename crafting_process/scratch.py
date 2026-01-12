@@ -1,16 +1,16 @@
 from pprint import pprint
 import json
 
-from graph import GraphBuilder
-from process import Ingredients
-from process import Process
-from solver import solve_milp
-from solver import best_milp_sequence
-from library import parse_augments
-from library import parse_processes
-from library import Predicates
-from ops import CraftingContext
-from utils import only
+from .graph import GraphBuilder
+from .process import Ingredients
+from .process import Process
+from .solver import solve_milp
+from .solver import best_milp_sequence
+from .library import parse_augments
+from .library import parse_processes
+from .library import Predicates
+from .ops import CraftingContext
+from .utils import only
 
 
 with open("spaceage-recipes.txt") as f:

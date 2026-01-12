@@ -4,16 +4,16 @@ from math import ceil
 
 import requests
 
-from graph import GraphBuilder
-from process import Ingredients
-from process import Process
-from solver import solve_milp
-from solver import best_milp_sequence
-from library import parse_augments
-from library import parse_processes
-from library import Predicates
-from ops import CraftingContext
-from utils import only
+from .graph import GraphBuilder
+from .process import Ingredients
+from .process import Process
+from .solver import solve_milp
+from .solver import best_milp_sequence
+from .library import parse_augments
+from .library import parse_processes
+from .library import Predicates
+from .ops import CraftingContext
+from .utils import only
 
 
 def cc_from_file(path):

@@ -1,5 +1,5 @@
 from cytoolz import curry
-from process import Process
+from .process import Process
 
 
 class Augments:

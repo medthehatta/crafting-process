@@ -1,6 +1,6 @@
 from coolname import generate_slug
 
-from utils import only
+from .utils import only
 
 
 class GraphBuilder:

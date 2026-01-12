@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 import uvicorn
 
-from ops import CraftingContext
+from .ops import CraftingContext
 
 
 cc = CraftingContext()

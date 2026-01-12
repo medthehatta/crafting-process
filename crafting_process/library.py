@@ -1,12 +1,12 @@
 import json
 import re
 
-from utils import curry
+from .utils import curry
 
-from graph import GraphBuilder
-from process import Ingredients
-from process import Process
-from augment import Augments
+from .graph import GraphBuilder
+from .process import Ingredients
+from .process import Process
+from .augment import Augments
 
 
 def parse_process(s):

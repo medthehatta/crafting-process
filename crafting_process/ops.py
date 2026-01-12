@@ -4,16 +4,16 @@ from itertools import product
 from coolname import generate_slug
 from cytoolz import take
 
-from graph import GraphBuilder
-from process import Ingredients
-from augment import AugmentedProcess
-from solver import best_milp_sequence
-from library import parse_processes
-from library import parse_augments
-from library import augments_from_records
-from library import process_from_spec_dict
-from library import Predicates
-from utils import only
+from .graph import GraphBuilder
+from .process import Ingredients
+from .augment import AugmentedProcess
+from .solver import best_milp_sequence
+from .library import parse_processes
+from .library import parse_augments
+from .library import augments_from_records
+from .library import process_from_spec_dict
+from .library import Predicates
+from .utils import only
 
 
 #
