@@ -15,7 +15,7 @@ class Process:
             if component > 0:
                 outputs.append((name, component, basis))
             elif component < 0:
-                inputs.append((name, component, basis))
+                inputs.append((name, -component, basis))
         return cls(
             Ingredients.from_triples(outputs),
             Ingredients.from_triples(inputs),

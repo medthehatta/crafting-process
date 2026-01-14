@@ -12,6 +12,19 @@ class GraphBuilder:
         self.open_inputs = []
         self.open_outputs = []
 
+    def __repr__(self):
+        node_s = "node" if len(self.processes) > 1 else "nodes"
+        return (
+            f"<{self.__class__.__name__} "
+            f"[{len(self.processes)} {node_s}]>"
+        )
+
+    @classmethod
+    def from_process(cls, process, name=None):
+        g = cls()
+        g.add_process(process, name=name)
+        return g
+
     @classmethod
     def union(cls, left, right):
         new = cls()
@@ -30,6 +43,26 @@ class GraphBuilder:
         self.open_inputs.extend(other.open_inputs)
         self.open_outputs.extend(other.open_outputs)
         return self
+
+    def output_into(self, other):
+        new = self.union(self, other)
+        output_process_by_kind = {
+            kind: process_name for (process_name, kind) in self.open_outputs
+        }
+        input_process_by_kind = {
+            kind: process_name for (process_name, kind) in other.open_inputs
+        }
+        shared_kinds = \
+            set(output_process_by_kind).intersection(input_process_by_kind)
+
+        for kind in shared_kinds:
+            new._connect_process_to_process(
+                output_process_by_kind[kind],
+                input_process_by_kind[kind],
+                kind=kind,
+            )
+
+        return new
 
     def add_process(self, process, name=None):
         name = name or generate_slug(2)
@@ -55,6 +88,7 @@ class GraphBuilder:
         self.processes.pop(process_name)
 
     def consolidate_processes(self, process1, process2):
+        raise NotImplementedError("Doing this is stupid, quit it")
         p1 = self.processes[process1]
         p2 = self.processes[process2]
 
@@ -198,7 +232,7 @@ class GraphBuilder:
                 )
 
     def coalesce_pools(self, pool1_name, pool2_name):
-        if pool1_name == pool1_name:
+        if pool1_name == pool2_name:
             return self.pools[pool1_name]
 
         pool1 = self.pools[pool1_name]
@@ -217,7 +251,6 @@ class GraphBuilder:
         new_pool["outputs"] = src_pool["outputs"] + dest_pool["outputs"]
         self.pool_aliases[pool1_name] = new_pool["name"]
         self.pool_aliases[pool2_name] = new_pool["name"]
-        breakpoint()
         self.pools.pop(pool1_name)
         self.pools.pop(pool2_name)
         return new_pool
@@ -278,6 +311,19 @@ class GraphBuilder:
             if process_name in pool.get("inputs", [])
             or process_name in pool.get("outputs", [])
         ]
+
+    def find_pools_by_process_name_and_kind(self, process_name, kind):
+        return [
+            pool for pool in self.find_pools_by_kind(kind)
+            if process_name in pool.get("inputs", [])
+            or process_name in pool.get("outputs", [])
+        ]
+
+    def outputs_kind(self, kind):
+        return any(kind == k for (_, k) in self.open_outputs)
+
+    def requires_kind(self, kind):
+        return any(kind == k for (_, k) in self.open_inputs)
 
     def build_matrix(self):
         matrix = []
