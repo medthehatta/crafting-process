@@ -46,21 +46,26 @@ class GraphBuilder:
 
     def output_into(self, other):
         new = self.union(self, other)
-        output_process_by_kind = {
-            kind: process_name for (process_name, kind) in self.open_outputs
-        }
-        input_process_by_kind = {
-            kind: process_name for (process_name, kind) in other.open_inputs
-        }
-        shared_kinds = \
-            set(output_process_by_kind).intersection(input_process_by_kind)
+
+        outputs_by_kind = {}
+        inputs_by_kind = {}
+
+        for (process_name, kind) in self.open_outputs:
+            outputs_by_kind[kind] = outputs_by_kind.get(kind, []) + [process_name]
+
+        for (process_name, kind) in other.open_inputs:
+            inputs_by_kind[kind] = inputs_by_kind.get(kind, []) + [process_name]
+
+        shared_kinds = set(outputs_by_kind).intersection(inputs_by_kind)
 
         for kind in shared_kinds:
-            new._connect_process_to_process(
-                output_process_by_kind[kind],
-                input_process_by_kind[kind],
-                kind=kind,
-            )
+            for output_process in outputs_by_kind[kind]:
+                for input_process in inputs_by_kind[kind]:
+                    new._connect_process_to_process(
+                        output_process,
+                        input_process,
+                        kind=kind,
+                    )
 
         return new
 

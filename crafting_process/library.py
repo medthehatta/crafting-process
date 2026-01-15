@@ -302,12 +302,7 @@ class ProcessLibrary:
     def add_from_text(self, text):
         found = parse_processes(text.splitlines())
         names = [self.mkname(f) for f in found]
-        self.recipes.update(
-            {
-                name: GraphBuilder.from_process(f, name=name)
-                for (f, name) in zip(found, names)
-            }
-        )
+        self.recipes.update({name: f for (f, name) in zip(found, names)})
         return self
 
     def mkname(self, recipe):
@@ -336,11 +331,11 @@ class ProcessLibrary:
         return [(n, r) for (n, r) in self.recipes.items() if pred(r)]
 
     def producing(self, resource):
-        return self.filter(GraphPredicates.outputs_part(resource))
+        return self.filter(ProcessPredicates.outputs_part(resource))
 
     def consuming(self, resource):
-        return self.filter(GraphPredicates.requires_part(resource))
+        return self.filter(ProcessPredicates.requires_part(resource))
 
     def using(self, process):
-        return self.filter(GraphPredicates.uses_process(process))
+        return self.filter(ProcessPredicates.uses_process(process))
 
