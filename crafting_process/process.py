@@ -62,6 +62,16 @@ class Process:
         else:
             return self.transfer_rate
 
+    def describe(self):
+        process_name = self.process
+        output_names = self.outputs.nonzero_components
+        if process_name:
+            name = " + ".join(output_names) + f" via {process_name}"
+        else:
+            name = " + ".join(output_names)
+
+        return name
+
     def to_dict(self):
         return {
             "outputs": [(n, c) for (n, c, _) in self.outputs.triples()],

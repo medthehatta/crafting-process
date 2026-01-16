@@ -1,3 +1,5 @@
+import itertools
+
 from coolname import generate_slug
 
 from .utils import only
@@ -389,3 +391,46 @@ class GraphBuilder:
             "processes": processes,
             "pools": pools,
         }
+
+    def process_depths(self):
+        terminal_edges = self.open_outputs
+        input_processes = [process_name for (process_name, _) in terminal_edges]
+        other = itertools.chain.from_iterable(
+            self._process_depths(self, inp, depth=0)
+            for inp in input_processes
+        )
+        return dict(other)
+
+    def _process_depths(self, process_name, depth=0):
+        input_pools = [
+            pool for pool in self.pools.values()
+            if process_name in pool.get("outputs", [])
+        ]
+        input_processes = list(
+            itertools.chain.from_iterable(pool["inputs"] for pool in input_pools)
+        )
+        other = list(
+            itertools.chain.from_iterable(
+                self._process_depths(inp, depth=depth+1)
+                for inp in input_processes
+            )
+        )
+        max_depth = max([depth for (p, depth) in other if p == process_name] + [depth])
+        return (
+            [(process_name, max_depth)]
+            + [(p, d) for (p, d) in other if p != process_name]
+        )
+
+    def output_depths(self):
+        depths = self.process_depths()
+
+        # FIXME: This finds the deepest output process per pool, but do we want
+        # the deepest input process?  If an output is just going nowhere and
+        # not being consumed, that output doesn't need to be "ready" for
+        # anybody.
+        out = {}
+        for (process_name, process) in self.processes.items():
+            output_desc = process.describe()
+            out[output_desc] = max(out.get(output_desc, -1), depths[process_name])
+
+        return out
