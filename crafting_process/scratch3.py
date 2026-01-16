@@ -236,3 +236,6 @@ def analyze_graph(graph, num_keep=4):
 
         yield result
 
+
+def show_graph(graph):
+    pprint(list(analyze_graph(graph)))
