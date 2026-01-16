@@ -1,0 +1,171 @@
+hack = controller + lcd + ir
+
+power supply + keyboard + circuit board + coil + metal scrap + plastic scrap
+demolished computer
+
+#metal scrap
+#demolished grate
+
+controller
+computation brick + 2 keyboard + 2 phone + 2 screws
+
+lcd
+computation brick + 3 tech scrap + glowstick + 2 screws
+
+glowstick
+test tube + bio scrap
+
+ir
+computation brick + circuit board + 2 glass scrap
+
+circuit board
+8 tech scrap
+
+computation brick =
+cpu + 3 circuit board + tech scrap + fan
+
+chopinator
+4 metal scrap + any pipe + any oil + energy brick
+
+shock trap
+energy brick + stapler + coil
+
+tripwire mine
+soil + screws + 3 tech scrap + stapler
+
+screws
+2 metal scrap
+
+soil
+any feces + bio scrap
+
+vacuum
+energy brick + gauge + 2 metal pipe + raw carbuncle
+
+any pipe
+metal pipe
+
+energy brick
+power supply + circuit board + tech scrap + fan
+
+makeshift battery
+energy brick + coil + 2 metal scrap
+
+8 makeshift bolt
+pen + metal scrap
+
+syringe
+test tube + bio scrap + anteverse wheat
+
+test tube
+glass scrap + wood plank
+
+plastic shield
+cafeteria tray + duct tape + cloth scrap
+
+small garden plot
+wood plank + 2 plastic scrap + 2 hose + soil
+
+portable stove
+2 coil + 4 plastic scrap + 4 any pipe + keyboard
+
+plug strip
+power supply + coil + 2 metal scrap
+
+crafting bench
+4 duct tape + power supply + 2 any pipe
+
+repair station
+6 duct tape + 2 coil + anvil + 2 any pipe
+
+small crate
+2 wood plank + 2 plastic scrap
+
+medium crate
+2 rebar + 4 plastic scrap
+
+small ramp
+2 screws + 4 wood plank
+
+enhancement bench
+crafting bench + 4 rebar + lcd + controller
+
+medium garden plot
+2 rebar + 4 plastic scrap + 4 reinforced hose + 2 soil
+
+reinforced hose
+hose + screws + steel cable
+
+10 grinder disc
+scrap metal + rebar
+
+grinder
+computation brick + 2 reinforced hose + air compressor
+
+crafting bench teleporter
+energy brick + raw exor heart
+
+4 scrapshot ammo
+screws + 20 paper scrap
+
+makeshift cooking pot
+2 stapler + 3 metal scrap
+
+net launcher
+2 rebar + 2 stapler + 4 rubber band + 2 plastic scrap
+
+core crafting setup
+crafting bench + 3 small crate
+
+core cooking setup
+plug strip + portable stove + 2 makeshift cooking pot
+
+forge greaves
+2 reinforced hose + 4 chain + 2 rebar
+
+forge chestplate
+high-vis vest + 2 steel cable + 2 rebar
+
+forge helmet
+welding mask + 4 leather scrap + 2 rebar + 2 reinforced hose
+
+forge pauldrons
+blacksmithing gloves + 2 rebar + 4 screws
+
+forge set
+forge greaves + forge chestplate + forge helmet + forge pauldrons
+
+makeshift crossbow
+desk leg + 3 rubber band + 2 plastic scrap + stapler
+
+paper scrap | salvage:
+wood scrap
+
+chopinator
+4 metal scrap + any pipe + energy brick + any oil
+
+tesla coil
+canister + 8 screws + 2 hose + 3 coil
+
+tripwire mine
+soil + screws + 3 tech scrap + stapler
+
+air compressor
+canister + chain + reinforced hose + gauge
+
+tram station key
+controller + 4 military electronics
+
+bench press
+4 rebar + 2 energy brick + air compressor + 4 any pipe
+
+industrial battery
+power cell + 2 rebar + air compressor + 2 metal scrap
+
+soup bowl
+metal scrap + stapler + glass scrap + test tube
+
+makeshift spear
+standing lamp + kitchen knife + phone + 4 duct tape
+
+
