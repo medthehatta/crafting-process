@@ -396,7 +396,7 @@ class GraphBuilder:
         terminal_edges = self.open_outputs
         input_processes = [process_name for (process_name, _) in terminal_edges]
         other = itertools.chain.from_iterable(
-            self._process_depths(self, inp, depth=0)
+            self._process_depths(inp, depth=0)
             for inp in input_processes
         )
         return dict(other)

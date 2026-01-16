@@ -4,16 +4,39 @@ from pprint import pprint
 
 from cytoolz import unique
 
-from .graph import GraphBuilder
-from .process import Process
 from .library import ProcessLibrary
 from .library import Ingredients
-from .utils import only
-from .solver import best_milp_sequence
+from .orchestration import analyze_graph
+from .orchestration import show_graph
+from .orchestration import production_graphs
 
 
 recipes = ProcessLibrary()
 recipes.add_from_text(open("abiotic.txt", "r").read())
+
+
+def p(desired_str, stop_kinds=None, skip_processes=None):
+    result = list(
+        production_graphs(
+            recipes,
+            Ingredients.parse(desired_str),
+            stop_kinds=stop_kinds,
+            skip_processes=skip_processes,
+        )
+    )
+    print(f"Found {len(result)} procedures for: {desired_str}")
+    return result
+
+
+def pa(desired_str, stop_kinds=None, skip_processes=None):
+    result = production_graphs(
+        recipes,
+        Ingredients.parse(desired_str),
+        stop_kinds=stop_kinds,
+        skip_processes=skip_processes,
+    )
+    for r in result:
+        pprint(list(analyze_graph(r)))
 
 
 def debug(x, msg=None):
