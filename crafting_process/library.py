@@ -30,9 +30,16 @@ def parse_process(s):
 
 def _parse_process_header(s):
     # It can be valid to provide the entire recipe in the "header" by
-    # separating inputs and outputs with " = ".  So first split off anything
-    # after the " = " and call that inputs
-    equals = re.split(r"\s+=\s+", s)
+    # separating inputs and outputs with " = ".
+    #
+    # However if an = is at the end of the line, it's assumed the next line is
+    # the part "after" the equals anyway, i.e. the inputs, so we strip out
+    # terminal =.
+    cleaned = re.sub(r"=\s*$", "", s)
+
+    # Then, split off anything after an intermediate " = " and call that the
+    # inputs.
+    equals = re.split(r"\s+=\s+", cleaned)
 
     match equals:
         case [h]:
@@ -126,6 +133,29 @@ class Predicates:
 
     @classmethod
     @curry
+    def uses_any_of_processes(cls, process_names):
+        return cls.any_([cls.uses_process(k) for k in process_names])
+
+    @classmethod
+    @curry
+    def outputs_part(cls, part, x):
+        raise NotImplementedError("Override me")
+
+    @classmethod
+    @curry
+    def requires_part(cls, part, x):
+        raise NotImplementedError("Override me")
+
+    @classmethod
+    @curry
+    def uses_process(cls, process_name, x):
+        raise NotImplementedError("Override me")
+
+
+class ProcessPredicates(Predicates):
+
+    @classmethod
+    @curry
     def outputs_part(cls, part, process):
         return part in process.outputs.nonzero_components
 
@@ -139,10 +169,23 @@ class Predicates:
     def uses_process(cls, process_name, process):
         return process.process == process_name
 
+
+class GraphPredicates(Predicates):
+
     @classmethod
     @curry
-    def uses_any_of_processes(cls, process_names):
-        return cls.any_([cls.uses_process(k) for k in process_names])
+    def outputs_part(cls, part, graph):
+        return graph.outputs_kind(part)
+
+    @classmethod
+    @curry
+    def requires_part(cls, part, graph):
+        return graph.requires_kind(part)
+
+    @classmethod
+    @curry
+    def uses_process(cls, process_name, graph):
+        return process_name in graph.processes
 
 
 def specs_from_lines(lines):
@@ -242,3 +285,57 @@ def augments_from_records(records):
 def parse_augments(lines):
     records = augment_specs_from_lines(lines)
     return augments_from_records(records)
+
+
+class ProcessLibrary:
+
+    # FIXME: Support AugmentedProcess
+
+    def __init__(self, recipes=None):
+        self.recipes = recipes or {}
+        self.names = set([])
+
+    #
+    # Add recipes
+    #
+
+    def add_from_text(self, text):
+        found = parse_processes(text.splitlines())
+        names = [self.mkname(f) for f in found]
+        self.recipes.update({name: f for (f, name) in zip(found, names)})
+        return self
+
+    def mkname(self, recipe):
+        process_name = recipe.process
+        output_names = recipe.outputs.nonzero_components
+        if process_name:
+            name = " + ".join(output_names) + f" via {process_name}"
+        else:
+            name = " + ".join(output_names)
+
+        if name in self.names:
+            disambiguator = 2
+            while f"{name} {disambiguator}" in self.names:
+                disambiguator += 1
+            name = f"{name} {disambiguator}"
+
+        self.names.add(name)
+
+        return name
+
+    #
+    # Lookup
+    #
+
+    def filter(self, pred):
+        return [(n, r) for (n, r) in self.recipes.items() if pred(r)]
+
+    def producing(self, resource):
+        return self.filter(ProcessPredicates.outputs_part(resource))
+
+    def consuming(self, resource):
+        return self.filter(ProcessPredicates.requires_part(resource))
+
+    def using(self, process):
+        return self.filter(ProcessPredicates.uses_process(process))
+

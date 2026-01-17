@@ -1,3 +1,5 @@
+import itertools
+
 from coolname import generate_slug
 
 from .utils import only
@@ -11,6 +13,19 @@ class GraphBuilder:
         self.pool_aliases = {}
         self.open_inputs = []
         self.open_outputs = []
+
+    def __repr__(self):
+        node_s = "node" if len(self.processes) > 1 else "nodes"
+        return (
+            f"<{self.__class__.__name__} "
+            f"[{len(self.processes)} {node_s}]>"
+        )
+
+    @classmethod
+    def from_process(cls, process, name=None):
+        g = cls()
+        g.add_process(process, name=name)
+        return g
 
     @classmethod
     def union(cls, left, right):
@@ -30,6 +45,31 @@ class GraphBuilder:
         self.open_inputs.extend(other.open_inputs)
         self.open_outputs.extend(other.open_outputs)
         return self
+
+    def output_into(self, other):
+        new = self.union(self, other)
+
+        outputs_by_kind = {}
+        inputs_by_kind = {}
+
+        for (process_name, kind) in self.open_outputs:
+            outputs_by_kind[kind] = outputs_by_kind.get(kind, []) + [process_name]
+
+        for (process_name, kind) in other.open_inputs:
+            inputs_by_kind[kind] = inputs_by_kind.get(kind, []) + [process_name]
+
+        shared_kinds = set(outputs_by_kind).intersection(inputs_by_kind)
+
+        for kind in shared_kinds:
+            for output_process in outputs_by_kind[kind]:
+                for input_process in inputs_by_kind[kind]:
+                    new._connect_process_to_process(
+                        output_process,
+                        input_process,
+                        kind=kind,
+                    )
+
+        return new
 
     def add_process(self, process, name=None):
         name = name or generate_slug(2)
@@ -55,6 +95,7 @@ class GraphBuilder:
         self.processes.pop(process_name)
 
     def consolidate_processes(self, process1, process2):
+        raise NotImplementedError("Doing this is stupid, quit it")
         p1 = self.processes[process1]
         p2 = self.processes[process2]
 
@@ -198,7 +239,7 @@ class GraphBuilder:
                 )
 
     def coalesce_pools(self, pool1_name, pool2_name):
-        if pool1_name == pool1_name:
+        if pool1_name == pool2_name:
             return self.pools[pool1_name]
 
         pool1 = self.pools[pool1_name]
@@ -217,7 +258,6 @@ class GraphBuilder:
         new_pool["outputs"] = src_pool["outputs"] + dest_pool["outputs"]
         self.pool_aliases[pool1_name] = new_pool["name"]
         self.pool_aliases[pool2_name] = new_pool["name"]
-        breakpoint()
         self.pools.pop(pool1_name)
         self.pools.pop(pool2_name)
         return new_pool
@@ -279,6 +319,19 @@ class GraphBuilder:
             or process_name in pool.get("outputs", [])
         ]
 
+    def find_pools_by_process_name_and_kind(self, process_name, kind):
+        return [
+            pool for pool in self.find_pools_by_kind(kind)
+            if process_name in pool.get("inputs", [])
+            or process_name in pool.get("outputs", [])
+        ]
+
+    def outputs_kind(self, kind):
+        return any(kind == k for (_, k) in self.open_outputs)
+
+    def requires_kind(self, kind):
+        return any(kind == k for (_, k) in self.open_inputs)
+
     def build_matrix(self):
         matrix = []
 
@@ -338,3 +391,46 @@ class GraphBuilder:
             "processes": processes,
             "pools": pools,
         }
+
+    def process_depths(self):
+        terminal_edges = self.open_outputs
+        input_processes = [process_name for (process_name, _) in terminal_edges]
+        other = itertools.chain.from_iterable(
+            self._process_depths(inp, depth=0)
+            for inp in input_processes
+        )
+        return dict(other)
+
+    def _process_depths(self, process_name, depth=0):
+        input_pools = [
+            pool for pool in self.pools.values()
+            if process_name in pool.get("outputs", [])
+        ]
+        input_processes = list(
+            itertools.chain.from_iterable(pool["inputs"] for pool in input_pools)
+        )
+        other = list(
+            itertools.chain.from_iterable(
+                self._process_depths(inp, depth=depth+1)
+                for inp in input_processes
+            )
+        )
+        max_depth = max([depth for (p, depth) in other if p == process_name] + [depth])
+        return (
+            [(process_name, max_depth)]
+            + [(p, d) for (p, d) in other if p != process_name]
+        )
+
+    def output_depths(self):
+        depths = self.process_depths()
+
+        # FIXME: This finds the deepest output process per pool, but do we want
+        # the deepest input process?  If an output is just going nowhere and
+        # not being consumed, that output doesn't need to be "ready" for
+        # anybody.
+        out = {}
+        for (process_name, process) in self.processes.items():
+            output_desc = process.describe()
+            out[output_desc] = max(out.get(output_desc, -1), depths[process_name])
+
+        return out
