@@ -3,6 +3,7 @@ from pprint import pprint
 from math import ceil
 
 from cytoolz import unique
+from cytoolz import interleave
 
 from .graph import GraphBuilder
 from .process import Process
@@ -18,6 +19,10 @@ def _only(lst):
         return lst[0]
     else:
         raise ValueError(f"Expected 1 element but found {len(lst)}")
+
+
+def analyze_graphs(graphs, num_keep=4):
+    return interleave(analyze_graph(g) for g in graphs)
 
 
 def analyze_graph(graph, num_keep=4):
@@ -205,10 +210,6 @@ def _production_graphs(
 
 
 def printable_analysis(aly):
-    # FIXME: Should accept the whole list of graphs instead of just the results
-    # of a milp from each graph to unify numbering and not print the header
-    # each time.
-
     out_lines = []
 
     first = next(aly)

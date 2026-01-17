@@ -1,11 +1,5 @@
 hack = controller + lcd + ir
 
-power supply + keyboard + circuit board + coil + metal scrap + plastic scrap | demolish:
-computer
-
-metal scrap | demolish:
-grate
-
 controller
 computation brick + 2 keyboard + 2 phone + 2 screws
 

@@ -7,6 +7,7 @@ from cytoolz import unique
 from .library import ProcessLibrary
 from .library import Ingredients
 from .orchestration import analyze_graph
+from .orchestration import analyze_graphs
 from .orchestration import show_graph
 from .orchestration import production_graphs
 from .orchestration import printable_analysis
@@ -36,8 +37,7 @@ def pa(desired_str, stop_kinds=None, skip_processes=None):
         stop_kinds=stop_kinds,
         skip_processes=skip_processes,
     )
-    for r in result:
-        pprint(analyze_graph(r))
+    pprint(analyze_graphs(result))
 
 
 def pr(desired_str, stop_kinds=None, skip_processes=None):
@@ -47,8 +47,7 @@ def pr(desired_str, stop_kinds=None, skip_processes=None):
         stop_kinds=stop_kinds,
         skip_processes=skip_processes,
     )
-    for r in result:
-        print(printable_analysis(analyze_graph(r)))
+    print(printable_analysis(analyze_graphs(result)))
 
 
 def debug(x, msg=None):
