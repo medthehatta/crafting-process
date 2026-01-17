@@ -1,5 +1,6 @@
 import itertools
 from pprint import pprint
+from math import ceil
 
 from cytoolz import unique
 
@@ -9,7 +10,24 @@ from .library import Ingredients
 from .solver import best_milp_sequence
 
 
+def _only(lst):
+    lst = list(lst)
+    if len(lst) == 0:
+        raise ValueError("Empty list")
+    elif len(lst) == 1:
+        return lst[0]
+    else:
+        raise ValueError(f"Expected 1 element but found {len(lst)}")
+
+
 def analyze_graph(graph, num_keep=4):
+    # Get the output node so we can figure out what was being asked for
+    output_process_name = _only(
+        name for (name, kind) in graph.open_outputs if kind == "_"
+    )
+    output_process = graph.processes[output_process_name]
+    desired = output_process.inputs
+
     # FIXME: This is batch specific
     milps = batch_milps(graph)
 
@@ -23,6 +41,7 @@ def analyze_graph(graph, num_keep=4):
 
     for m in relevant:
         result = {}
+        result["desired"] = desired
 
         total_processes = sum(c for (c, _, _) in m["counts"])
         count_by_process = {name: count for (count, _, name) in m["counts"]}
@@ -183,3 +202,43 @@ def _production_graphs(
             stop_kinds=stop_kinds,
             skip_processes=skip_processes,
         )
+
+
+def printable_analysis(aly):
+    # FIXME: Should accept the whole list of graphs instead of just the results
+    # of a milp from each graph to unify numbering and not print the header
+    # each time.
+
+    out_lines = []
+
+    first = next(aly)
+    desired = first["desired"]
+    w = len(str(desired))
+    out_lines.append("#"*(10 + w))
+    out_lines.append(f"#    {desired}    #")
+    out_lines.append("#"*(10 + w))
+    out_lines.append("")
+
+    for (i, a) in enumerate(itertools.chain([first], aly), start=1):
+        tot = a["total_processes"] - 1
+        tot_s = f"1 process" if tot == 1 else f"{tot} processes"
+        out_lines.append(f"{i}) {tot_s}, {a['leak']} leak")
+        out_lines.append("")
+
+        for (amt, inp) in a["inputs"]:
+            if int(amt) == amt:
+                amt_str = str(ceil(amt))
+            else:
+                amt_str = f"{amt:0.2f}"
+            out_lines.append(f"    {amt_str} {inp}")
+
+        out_lines.append("")
+
+        for (count, desc, procname) in a["sorted_process_counts"]:
+            if desc == "_":
+                continue
+            out_lines.append(f"    {count}x {desc} (v. {procname})")
+
+        out_lines.append("")
+
+    return "\n".join(out_lines)

@@ -9,6 +9,7 @@ from .library import Ingredients
 from .orchestration import analyze_graph
 from .orchestration import show_graph
 from .orchestration import production_graphs
+from .orchestration import printable_analysis
 
 
 recipes = ProcessLibrary()
@@ -36,7 +37,18 @@ def pa(desired_str, stop_kinds=None, skip_processes=None):
         skip_processes=skip_processes,
     )
     for r in result:
-        pprint(list(analyze_graph(r)))
+        pprint(analyze_graph(r))
+
+
+def pr(desired_str, stop_kinds=None, skip_processes=None):
+    result = production_graphs(
+        recipes,
+        Ingredients.parse(desired_str),
+        stop_kinds=stop_kinds,
+        skip_processes=skip_processes,
+    )
+    for r in result:
+        print(printable_analysis(analyze_graph(r)))
 
 
 def debug(x, msg=None):
