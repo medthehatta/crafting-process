@@ -238,7 +238,7 @@ def printable_analysis(aly):
         for (count, desc, procname) in a["sorted_process_counts"]:
             if desc == "_":
                 continue
-            out_lines.append(f"    {count}x {desc} (v. {procname})")
+            out_lines.append(f"    {count}x {desc}")
 
         out_lines.append("")
 
