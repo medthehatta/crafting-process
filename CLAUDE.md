@@ -57,11 +57,12 @@ tests/            pytest suite — function style, no test classes
 
 ```
 Process
-  .outputs:     Ingredients
-  .inputs:      Ingredients
-  .duration:    float | None        (None = batch-only)
-  .process:     str | None          (process type name — metadata, used by skip_processes)
-  .annotations: dict[str, int|float|str]  (freeform metadata; empty dict by default)
+  .outputs:           Ingredients
+  .inputs:            Ingredients
+  .duration:          float | None        (None = batch-only)
+  .process:           str | None          (process type name — metadata, used by skip_processes)
+  .annotations:       dict[str, int|float|str]  (freeform metadata; empty dict by default)
+  .applied_augments:  list[str]           (augment names applied in order; [] for originals)
   .transfer        = outputs - inputs
   .transfer_rate   = transfer / duration  (raises if no duration)
   .transfer_quantity(batch=False) dispatches to rate or raw transfer
@@ -139,6 +140,39 @@ widget | stamping: duration=4 | tier=2
 
 `ProcessPredicates.annotation_matches(key, pred)` — filters library by annotation value;
 `pred` is any callable `value -> bool`. Composes with `and_`/`or_`/`not_` as usual.
+
+### Augmentation DSL
+
+Augments are `Process -> Process` callables registered with `lib.register_augment(name, fn)`.
+`augment.py` provides `Augments` factory methods (`mul_speed`, `mul_outputs`, `add_input`,
+`add_input_rate`, `add_output_rate`, `mul_inputs`, `mul_duration`, `increase_energy_pct(kind, pct)`).
+`mul_speed`/`mul_duration` pass through unchanged when `duration=None`.
+
+```
+# Block augments — one @-line = one augmented variant per recipe below it
+@assembler_mk1
+@assembler_mk2
+@assembler_mk3 @speed_mod    ← multiple on one line are composed left-to-right
+
+2 iron | smelt: duration=4
+3 ore
+
+# New @-block after recipes resets; only @prod applies to press
+@prod
+
+1 widget | press: duration=2
+2 iron
+
+# Inline @-augment on a recipe overrides the current block for that recipe only
+1 gear | mill: @assembler_mk2 duration=3
+4 iron
+```
+
+Augmented entry name: `"<base_name> @aug1 @aug2"` (application order, space-delimited).
+Original (un-augmented) recipe is always added alongside augmented variants.
+
+`lib.with_augment_filter(skip_augments=None, only_augments=None)` — returns a filtered
+library view; thread into `production_graphs` via its `skip_augments`/`only_augments` params.
 
 `process_name` in the header sets `proc.process` — used by `skip_processes` in
 `production_graphs`. `ProcessLibrary.mkname()` builds the library key from
@@ -240,15 +274,15 @@ Each `counts` entry: `(repeat_count, process.describe(), process_slug)`.
 
 ```
 test_utils.py          4  done
-test_process.py       35  done
-test_library.py       75  done
+test_process.py       46  done
+test_library.py       96  done
 test_solver.py        18  done
 test_graph.py         49  done  (build_matrix and build_batch_matrix both covered)
-test_augment.py        0  TODO — skipped; AugmentedProcess not supported by library.py
-test_orchestration.py 86  done  (all passing)
+test_augment.py       27  done
+test_orchestration.py 90  done
 ```
 
-Total: 263 tests, all passing (`uv run pytest`).
+Total: 310 tests, all passing (`uv run pytest`).
 
 ### Upcoming test work
 

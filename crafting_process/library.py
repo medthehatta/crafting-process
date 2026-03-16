@@ -29,6 +29,12 @@ def parse_process(s):
         raise ValueError(f"Found too many lines in (next line):\n{s}")
 
 
+def _is_augment_line(stripped):
+    """Return True if every token on the line starts with '@'."""
+    tokens = stripped.split()
+    return bool(tokens) and all(t.startswith('@') for t in tokens)
+
+
 def _parse_annotation_block(s):
     """Extract and remove a [key=val | key2=val2] block from s.
 
@@ -106,6 +112,12 @@ def _parse_process_header(s):
     else:
         (product_raw, attributes_raw) = (segments[0].strip(), "")
 
+    # Extract inline @augment tokens before any other attribute parsing so they
+    # don't bleed into the process name or other key=value pairs.
+    inline_augment_tokens = re.findall(r'@[A-Za-z_][A-Za-z_0-9]*', attributes_raw)
+    attributes_raw = re.sub(r'@[A-Za-z_][A-Za-z_0-9]*\s*', '', attributes_raw).strip()
+    inline_augments = [t.lstrip('@') for t in inline_augment_tokens]
+
     # Parse the attributes.
     #
     # They will generally be a space-free identifier followed
@@ -138,6 +150,7 @@ def _parse_process_header(s):
         **input_dict,
         **attributes,
         "annotations": annotations,
+        "inline_augments": inline_augments,
     }
 
 
@@ -239,21 +252,36 @@ class GraphPredicates(Predicates):
 def specs_from_lines(lines):
     found = False
     buf = ""
+    augment_block = []      # list[list[str]] — one inner list per @-line
+    in_augment_section = True  # True while collecting consecutive @-lines
 
     for line in lines:
+        stripped = line.strip()
 
-        if not line.strip() or line.strip().startswith("#"):
+        if not stripped or stripped.startswith("#"):
             if found:
-                yield parse_process(buf)
+                spec = parse_process(buf)
+                spec["augment_block"] = list(augment_block)
+                yield spec
                 buf = ""
                 found = False
 
+        elif _is_augment_line(stripped):
+            if not in_augment_section:
+                # New @-block after recipes: reset
+                augment_block = []
+                in_augment_section = True
+            augment_block.append([t.lstrip('@') for t in stripped.split()])
+
         else:
+            in_augment_section = False
             buf += line + "\n"
             found = True
 
     if buf:
-        yield parse_process(buf)
+        spec = parse_process(buf)
+        spec["augment_block"] = list(augment_block)
+        yield spec
 
 
 def process_from_spec_dict(spec):
@@ -267,10 +295,8 @@ def process_from_spec_dict(spec):
     )
 
     annotations = spec.get("annotations", {})
-    kwargs = {
-        k: v for (k, v) in spec.items()
-        if k not in ["inputs", "outputs", "annotations"]
-    }
+    _excluded = {"inputs", "outputs", "annotations", "augment_block", "inline_augments"}
+    kwargs = {k: v for (k, v) in spec.items() if k not in _excluded}
 
     return Process(outputs=outputs, inputs=inputs, annotations=annotations, **kwargs)
 
@@ -338,34 +364,64 @@ def parse_augments(lines):
 
 class ProcessLibrary:
 
-    # FIXME: Support AugmentedProcess
-
     def __init__(self, recipes=None):
         self.recipes = recipes or {}
-        self.names = set([])
+        self.names = set(recipes.keys()) if recipes else set()
+        self._augments = {}
+
+    #
+    # Add augments
+    #
+
+    def register_augment(self, name, fn):
+        self._augments[name] = fn
 
     #
     # Add recipes
     #
 
     def add_from_text(self, text):
-        found = parse_processes(text.splitlines())
-        names = [self.mkname(f) for f in found]
-        self.recipes.update({name: f for (f, name) in zip(found, names)})
+        for spec in specs_from_lines(text.splitlines()):
+            inline_augments = spec.get("inline_augments", [])
+            # augment_seqs is a list of lists; each inner list is one variant's augment names
+            if inline_augments:
+                augment_seqs = [inline_augments]
+            else:
+                augment_seqs = spec.get("augment_block", [])
+
+            base = process_from_spec_dict(spec)
+            base_name = self.mkname(base)
+            self.recipes[base_name] = base
+
+            for aug_names in augment_seqs:
+                fns = [self._augments[n] for n in aug_names]
+                augmented = Augments.composed(fns)(base)
+                # Always create a fresh copy with the updated applied_augments so we
+                # never mutate the base process (matters when the augment fn returns p
+                # unchanged, e.g. mul_speed on a batch-only process with no duration).
+                augmented = augmented.copy(
+                    applied_augments=base.applied_augments + aug_names
+                )
+                suffix = " ".join(f"@{n}" for n in aug_names)
+                aug_name = self._unique_name(f"{base_name} {suffix}")
+                self.recipes[aug_name] = augmented
+
         return self
 
-    def mkname(self, recipe):
-        name = describe_process(recipe.outputs.nonzero_components, recipe.process)
-
-        if name in self.names:
-            disambiguator = 2
-            while f"{name} {disambiguator}" in self.names:
-                disambiguator += 1
-            name = f"{name} {disambiguator}"
-
+    def _unique_name(self, candidate):
+        if candidate not in self.names:
+            self.names.add(candidate)
+            return candidate
+        disambiguator = 2
+        while f"{candidate} {disambiguator}" in self.names:
+            disambiguator += 1
+        name = f"{candidate} {disambiguator}"
         self.names.add(name)
-
         return name
+
+    def mkname(self, recipe):
+        candidate = describe_process(recipe.outputs.nonzero_components, recipe.process)
+        return self._unique_name(candidate)
 
     #
     # Lookup
@@ -382,4 +438,21 @@ class ProcessLibrary:
 
     def using(self, process):
         return self.filter(ProcessPredicates.uses_process(process))
+
+    def with_augment_filter(self, skip_augments=None, only_augments=None):
+        skip_set = set(skip_augments or [])
+        only_set = set(only_augments) if only_augments is not None else None
+
+        def _keep(proc):
+            aug_set = set(proc.applied_augments)
+            if skip_set and aug_set & skip_set:
+                return False
+            if only_set is not None and not aug_set.issubset(only_set):
+                return False
+            return True
+
+        filtered = {n: p for (n, p) in self.recipes.items() if _keep(p)}
+        result = ProcessLibrary(recipes=filtered)
+        result._augments = self._augments
+        return result
 

@@ -261,3 +261,73 @@ def test_annotations_from_transfer():
     transfer = Ingredients.parse("2 widget") - Ingredients.parse("3 iron")
     p = Process.from_transfer(transfer, annotations={"tier": 1})
     assert p.annotations == {"tier": 1}
+
+
+# ---------------------------------------------------------------------------
+# Process.applied_augments
+# ---------------------------------------------------------------------------
+
+def test_applied_augments_default_empty():
+    p = Process(outputs=Ingredients.parse("1 widget"))
+    assert p.applied_augments == []
+
+
+def test_applied_augments_stored():
+    p = Process(outputs=Ingredients.parse("1 widget"), applied_augments=["mk2", "speed"])
+    assert p.applied_augments == ["mk2", "speed"]
+
+
+def test_applied_augments_copy_preserved():
+    p = Process(outputs=Ingredients.parse("1 widget"), applied_augments=["mk2"])
+    c = p.copy()
+    assert c.applied_augments == ["mk2"]
+
+
+def test_applied_augments_copy_is_independent():
+    p = Process(outputs=Ingredients.parse("1 widget"), applied_augments=["mk2"])
+    c = p.copy()
+    c.applied_augments.append("extra")
+    assert p.applied_augments == ["mk2"]
+
+
+def test_applied_augments_in_to_dict():
+    p = Process(outputs=Ingredients.parse("1 widget"), applied_augments=["mk2"])
+    assert p.to_dict()["applied_augments"] == ["mk2"]
+
+
+# ---------------------------------------------------------------------------
+# Process.copy with field overrides
+# ---------------------------------------------------------------------------
+
+def test_copy_override_duration():
+    p = make_process(duration=4.0)
+    c = p.copy(duration=2.0)
+    assert c.duration == pytest.approx(2.0)
+    assert p.duration == pytest.approx(4.0)
+
+
+def test_copy_override_preserves_annotations():
+    p = make_process(duration=4.0)
+    p2 = Process(
+        outputs=p.outputs, inputs=p.inputs, duration=p.duration,
+        process=p.process, annotations={"tier": 2},
+    )
+    c = p2.copy(duration=1.0)
+    assert c.annotations == {"tier": 2}
+    assert c.duration == pytest.approx(1.0)
+
+
+def test_copy_override_preserves_applied_augments():
+    p = Process(
+        outputs=Ingredients.parse("1 widget"),
+        applied_augments=["mk2"],
+    )
+    c = p.copy(duration=1.0)
+    assert c.applied_augments == ["mk2"]
+
+
+def test_copy_override_applied_augments():
+    p = Process(outputs=Ingredients.parse("1 widget"), applied_augments=["mk2"])
+    c = p.copy(applied_augments=["mk2", "speed"])
+    assert c.applied_augments == ["mk2", "speed"]
+    assert p.applied_augments == ["mk2"]

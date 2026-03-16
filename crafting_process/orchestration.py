@@ -135,7 +135,14 @@ def production_graphs(
     max_overlap=2,
     stop_kinds=None,
     skip_processes=None,
+    skip_augments=None,
+    only_augments=None,
 ):
+    if skip_augments or only_augments is not None:
+        recipes = recipes.with_augment_filter(
+            skip_augments=skip_augments,
+            only_augments=only_augments,
+        )
     new_transfer = Ingredients.parse("_") - transfer
     g = GraphBuilder.from_process(Process.from_transfer(new_transfer))
     yield from _production_graphs(

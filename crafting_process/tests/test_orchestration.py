@@ -957,3 +957,71 @@ def test_gadget_max_overlap_1_graph_count(gadget_library):
     # Only one provider per kind: 3^3 = 27 graphs
     graphs = list(production_graphs(gadget_library, Ingredients.parse("1 gadget"), max_overlap=1))
     assert len(graphs) == 27
+
+
+# ---------------------------------------------------------------------------
+# skip_augments / only_augments in production_graphs
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def augmented_iron_library():
+    """smelt (original), smelt @mk2, smelt @mk3; press to widget (no augments)."""
+    from crafting_process.augment import Augments
+    lib = ProcessLibrary()
+    lib.register_augment("mk2", Augments.mul_speed(2.0))
+    lib.register_augment("mk3", Augments.mul_speed(3.0))
+    # press comes before the @-block so it is not augmented
+    lib.add_from_text("""
+        1 widget | press:
+        2 iron
+
+        @mk2
+        @mk3
+
+        2 iron | smelt: duration=6
+        3 ore
+    """)
+    return lib
+
+
+def test_skip_augments_excludes_augmented_graphs(augmented_iron_library):
+    # Without skip: 3 smelt variants × 1 press = 3 graphs
+    # With skip_augments=[mk2, mk3]: only original smelt → 1 graph
+    graphs = list(production_graphs(
+        augmented_iron_library,
+        Ingredients.parse("1 widget"),
+        skip_augments=["mk2", "mk3"],
+    ))
+    assert len(graphs) == 1
+    # Confirm the graph uses the original smelt (no applied_augments)
+    procs = list(graphs[0].processes.values())
+    assert all(p.applied_augments == [] for p in procs)
+
+
+def test_only_augments_restricts_to_specified(augmented_iron_library):
+    # only_augments=["mk2"]: originals + mk2 variants → 2 smelt candidates → 2 graphs
+    graphs = list(production_graphs(
+        augmented_iron_library,
+        Ingredients.parse("1 widget"),
+        only_augments=["mk2"],
+    ))
+    assert len(graphs) == 2
+
+
+def test_only_augments_empty_list_originals_only(augmented_iron_library):
+    graphs = list(production_graphs(
+        augmented_iron_library,
+        Ingredients.parse("1 widget"),
+        only_augments=[],
+    ))
+    assert len(graphs) == 1
+    procs = list(graphs[0].processes.values())
+    assert all(p.applied_augments == [] for p in procs)
+
+
+def test_no_augment_filter_sees_all_variants(augmented_iron_library):
+    graphs = list(production_graphs(
+        augmented_iron_library,
+        Ingredients.parse("1 widget"),
+    ))
+    assert len(graphs) == 3

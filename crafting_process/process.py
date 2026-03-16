@@ -45,6 +45,7 @@ class Process:
         duration=None,
         process=None,
         annotations=None,
+        applied_augments=None,
     ):
         # This is just metadata saying what kind of process it is
         self.process = process
@@ -52,14 +53,16 @@ class Process:
         self.inputs = inputs or Ingredients.zero()
         self.duration = duration
         self.annotations = annotations if annotations is not None else {}
+        self.applied_augments = list(applied_augments) if applied_augments else []
 
-    def copy(self, new_name=None):
+    def copy(self, new_name=None, **overrides):
         return type(self)(
-            outputs=self.outputs,
-            inputs=self.inputs,
-            duration=self.duration,
-            process=new_name if new_name else self.process,
-            annotations=self.annotations.copy(),
+            outputs=overrides.get("outputs", self.outputs),
+            inputs=overrides.get("inputs", self.inputs),
+            duration=overrides.get("duration", self.duration),
+            process=new_name or overrides.get("process", self.process),
+            annotations={**self.annotations, **overrides.get("annotations", {})},
+            applied_augments=overrides.get("applied_augments", list(self.applied_augments)),
         )
 
     @property
@@ -92,6 +95,7 @@ class Process:
             "transfer_summary": str(self.transfer),
             "process": self.process,
             "annotations": self.annotations,
+            "applied_augments": self.applied_augments,
         }
 
     def __repr__(self):

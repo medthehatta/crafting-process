@@ -595,3 +595,253 @@ def test_lib_filter_annotation_and_output():
     assert len(results) == 1
     assert results[0][1].annotations["tier"] == 2
     assert results[0][1].outputs["iron"] == 2
+
+
+# ---------------------------------------------------------------------------
+# register_augment
+# ---------------------------------------------------------------------------
+
+def test_register_augment_stored():
+    from crafting_process.augment import Augments
+    lib = ProcessLibrary()
+    fn = Augments.mul_speed(2.0)
+    lib.register_augment("fast", fn)
+    assert "fast" in lib._augments
+    assert lib._augments["fast"] is fn
+
+
+# ---------------------------------------------------------------------------
+# @-block augment syntax
+# ---------------------------------------------------------------------------
+
+def _aug_lib():
+    """Library with a registered augment for use in augment tests."""
+    from crafting_process.augment import Augments
+    lib = ProcessLibrary()
+    lib.register_augment("mk2", Augments.mul_speed(2.0))
+    lib.register_augment("mk3", Augments.mul_speed(3.0))
+    lib.register_augment("prod", Augments.mul_outputs(1.1))
+    return lib
+
+
+def test_block_augment_original_always_added():
+    lib = _aug_lib()
+    lib.add_from_text("""
+        @mk2
+
+        2 iron | smelt: duration=4
+        3 ore
+    """)
+    # original + 1 augmented variant
+    iron_entries = lib.filter(ProcessPredicates.outputs_part("iron"))
+    assert len(iron_entries) == 2
+
+
+def test_block_augment_creates_augmented_entry():
+    lib = _aug_lib()
+    lib.add_from_text("""
+        @mk2
+
+        2 iron | smelt: duration=4
+        3 ore
+    """)
+    augmented = [(n, p) for (n, p) in lib.recipes.items() if p.applied_augments]
+    assert len(augmented) == 1
+    name, proc = augmented[0]
+    assert "@mk2" in name
+    assert proc.duration == pytest.approx(2.0)   # mk2 = mul_speed(2) → half duration
+
+
+def test_block_augment_multiple_lines_yields_one_variant_each():
+    lib = _aug_lib()
+    lib.add_from_text("""
+        @mk2
+        @mk3
+
+        2 iron | smelt: duration=6
+        3 ore
+    """)
+    # original + mk2 variant + mk3 variant
+    iron_entries = lib.filter(ProcessPredicates.outputs_part("iron"))
+    assert len(iron_entries) == 3
+
+
+def test_block_augment_multi_token_line_composed():
+    lib = _aug_lib()
+    lib.add_from_text("""
+        @mk2 @prod
+
+        2 iron | smelt: duration=4
+        3 ore
+    """)
+    augmented = [(n, p) for (n, p) in lib.recipes.items() if p.applied_augments]
+    assert len(augmented) == 1
+    name, proc = augmented[0]
+    assert "@mk2" in name and "@prod" in name
+    assert proc.duration == pytest.approx(2.0)          # mk2: duration halved
+    assert proc.outputs["iron"] == pytest.approx(2.2)   # prod: outputs * 1.1
+
+
+def test_block_augment_applied_augments_set():
+    lib = _aug_lib()
+    lib.add_from_text("""
+        @mk2
+
+        2 iron | smelt: duration=4
+        3 ore
+    """)
+    augmented = next(p for p in lib.recipes.values() if p.applied_augments)
+    assert augmented.applied_augments == ["mk2"]
+
+
+def test_block_augment_reset_after_recipes():
+    lib = _aug_lib()
+    lib.add_from_text("""
+        @mk2
+
+        2 iron | smelt: duration=4
+        3 ore
+
+        @mk3
+
+        1 widget | press: duration=2
+        2 iron
+    """)
+    # smelt: original + mk2; press: original + mk3
+    iron_entries = lib.filter(ProcessPredicates.outputs_part("iron"))
+    widget_entries = lib.filter(ProcessPredicates.outputs_part("widget"))
+    assert len(iron_entries) == 2
+    assert len(widget_entries) == 2
+    assert any("@mk2" in n for (n, _) in iron_entries)
+    assert any("@mk3" in n for (n, _) in widget_entries)
+    # smelt should NOT have an @mk3 variant
+    assert not any("@mk3" in n for (n, _) in iron_entries)
+
+
+def test_block_augment_applies_to_multiple_recipes():
+    lib = _aug_lib()
+    lib.add_from_text("""
+        @mk2
+
+        2 iron | smelt: duration=4
+        3 ore
+
+        1 widget | press: duration=2
+        2 iron
+    """)
+    iron_entries = lib.filter(ProcessPredicates.outputs_part("iron"))
+    widget_entries = lib.filter(ProcessPredicates.outputs_part("widget"))
+    assert len(iron_entries) == 2
+    assert len(widget_entries) == 2
+
+
+# ---------------------------------------------------------------------------
+# Inline @-augment syntax
+# ---------------------------------------------------------------------------
+
+def test_inline_augment_creates_augmented_entry():
+    lib = _aug_lib()
+    lib.add_from_text("""
+        2 iron | smelt: @mk2 duration=4
+        3 ore
+    """)
+    # original + 1 inline-augmented variant
+    iron_entries = lib.filter(ProcessPredicates.outputs_part("iron"))
+    assert len(iron_entries) == 2
+    augmented = next(p for p in lib.recipes.values() if p.applied_augments)
+    assert augmented.duration == pytest.approx(2.0)
+
+
+def test_inline_augment_replaces_block():
+    lib = _aug_lib()
+    lib.add_from_text("""
+        @mk3
+
+        2 iron | smelt: @mk2 duration=4
+        3 ore
+    """)
+    # block is @mk3 but recipe has inline @mk2 — inline wins
+    iron_entries = lib.filter(ProcessPredicates.outputs_part("iron"))
+    assert len(iron_entries) == 2  # original + mk2 only, not mk3
+    augmented = next(p for p in lib.recipes.values() if p.applied_augments)
+    assert "mk2" in augmented.applied_augments
+    assert "mk3" not in augmented.applied_augments
+
+
+# ---------------------------------------------------------------------------
+# Augmented entry naming
+# ---------------------------------------------------------------------------
+
+def test_augmented_entry_name_contains_at_tag():
+    lib = _aug_lib()
+    lib.add_from_text("""
+        @mk2
+
+        2 iron | smelt: duration=4
+        3 ore
+    """)
+    augmented_names = [n for n in lib.recipes if "@mk2" in n]
+    assert len(augmented_names) == 1
+
+
+def test_augmented_entry_name_multi_tag_application_order():
+    lib = _aug_lib()
+    lib.add_from_text("""
+        @mk2 @prod
+
+        2 iron | smelt: duration=4
+        3 ore
+    """)
+    # application order: mk2 first, then prod
+    augmented_names = [n for n in lib.recipes if "@mk2" in n]
+    assert len(augmented_names) == 1
+    name = augmented_names[0]
+    assert name.index("@mk2") < name.index("@prod")
+
+
+# ---------------------------------------------------------------------------
+# with_augment_filter / skip_augments / only_augments
+# ---------------------------------------------------------------------------
+
+def _augmented_lib():
+    lib = _aug_lib()
+    lib.add_from_text("""
+        @mk2
+        @mk3
+
+        2 iron | smelt: duration=6
+        3 ore
+    """)
+    return lib
+
+
+def test_with_augment_filter_skip_excludes():
+    lib = _augmented_lib()
+    filtered = lib.with_augment_filter(skip_augments=["mk2"])
+    names = list(filtered.recipes.keys())
+    assert not any("@mk2" in n for n in names)
+    assert any("@mk3" in n for n in names)
+    # original retained
+    assert any(not filtered.recipes[n].applied_augments for n in names)
+
+
+def test_with_augment_filter_only_includes_originals_and_specified():
+    lib = _augmented_lib()
+    filtered = lib.with_augment_filter(only_augments=["mk2"])
+    names = list(filtered.recipes.keys())
+    assert any("@mk2" in n for n in names)
+    assert not any("@mk3" in n for n in names)
+    assert any(not filtered.recipes[n].applied_augments for n in names)
+
+
+def test_with_augment_filter_only_empty_list_originals_only():
+    lib = _augmented_lib()
+    filtered = lib.with_augment_filter(only_augments=[])
+    for proc in filtered.recipes.values():
+        assert proc.applied_augments == []
+
+
+def test_with_augment_filter_preserves_augments_registry():
+    lib = _augmented_lib()
+    filtered = lib.with_augment_filter(skip_augments=["mk2"])
+    assert filtered._augments is lib._augments
