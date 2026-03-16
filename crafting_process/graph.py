@@ -93,36 +93,6 @@ class GraphBuilder:
 
         self.processes.pop(process_name)
 
-    def consolidate_processes(self, process1, process2):
-        raise NotImplementedError("Doing this is stupid, quit it")
-        p1 = self.processes[process1]
-        p2 = self.processes[process2]
-
-        p1_inputs = {
-            pool["kind"]: name for (name, pool) in self.pools.items()
-            if process1 in pool.get("inputs", [])
-        }
-        p1_outputs = {
-            pool["kind"]: name for (name, pool) in self.pools.items()
-            if process1 in pool.get("outputs", [])
-        }
-        p2_inputs = {
-            pool["kind"]: name for (name, pool) in self.pools.items()
-            if process2 in pool.get("inputs", [])
-        }
-        p2_outputs = {
-            pool["kind"]: name for (name, pool) in self.pools.items()
-            if process2 in pool.get("outputs", [])
-        }
-
-        for kind in p1_inputs:
-            self.coalesce_pools(p1_inputs[kind], p2_inputs[kind])
-
-        for kind in p1_outputs:
-            self.coalesce_pools(p1_inputs[kind], p2_inputs[kind])
-
-        self.remove_process(process2)
-
     def _connect_process_to_process(
         self,
         src_process,

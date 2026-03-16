@@ -5,6 +5,11 @@ class Ingredients(FormalVector):
     _ZERO = "Ingredients.NONE"
 
 
+def describe_process(output_names, process=None):
+    base = " + ".join(output_names)
+    return base + f" via {process}" if process else base
+
+
 class Process:
 
     @classmethod
@@ -63,14 +68,7 @@ class Process:
             return self.transfer_rate
 
     def describe(self):
-        process_name = self.process
-        output_names = self.outputs.nonzero_components
-        if process_name:
-            name = " + ".join(output_names) + f" via {process_name}"
-        else:
-            name = " + ".join(output_names)
-
-        return name
+        return describe_process(self.outputs.nonzero_components, self.process)
 
     def to_dict(self):
         return {

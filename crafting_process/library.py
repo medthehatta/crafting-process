@@ -4,6 +4,7 @@ import re
 from .utils import curry
 
 from .graph import GraphBuilder
+from .process import describe_process
 from .process import Ingredients
 from .process import Process
 from .augment import Augments
@@ -306,12 +307,7 @@ class ProcessLibrary:
         return self
 
     def mkname(self, recipe):
-        process_name = recipe.process
-        output_names = recipe.outputs.nonzero_components
-        if process_name:
-            name = " + ".join(output_names) + f" via {process_name}"
-        else:
-            name = " + ".join(output_names)
+        name = describe_process(recipe.outputs.nonzero_components, recipe.process)
 
         if name in self.names:
             disambiguator = 2
