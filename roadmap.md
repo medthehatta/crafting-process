@@ -10,6 +10,15 @@ The DSL currently provides all the attribute parameters like duration=N etc. as 
 
 **A0a:** I would likely want to iterate on this a bit, but the trailing [key=val, key2=val2] is a good suggestion and we should start with that.
 
+> **Q0a-followup:** Where exactly on the line does `[key=val]` appear?  The current record
+> header is `<outputs> | <name>:` with inputs on the next line.  I'd assume the annotation
+> block goes after the `:`, e.g. `2 iron | smelt: [tier=2]`.  Is that right, and does it
+> coexist cleanly with the existing `duration=N` positional parameter (which I'd need to check
+> in the parser)?  Also: auto-detect int/float values or start with everything-is-a-string for
+> the first iteration?
+
+I think we would use that line, yeah, same one as `smelt:` in your example, but let's say the annotations in square brackets would always come after real initializer parameters.  We should autodetect int/float values for sure, I anticipate many of these annotations being numeric and expecting to do filtering like "parameter is less than X"
+
 >
 > **Q0b:** Should annotations survive augmentation (item 1)?  E.g. if you annotate a process
 > as `tier=2` and then apply an efficiency augment, should the augmented process inherit that
@@ -63,6 +72,55 @@ What we want is to be capable of modeling some standard transformations on proce
 > level of augmentation the intended ceiling?
 
 **A1d:** Since augmentations should be composable I think allowing augmentation of augmented processes is the cleanest way forward-- ideally augmented processes would just be processes but with some metadata attached that remembers what augmentations have been applied.  Perhaps processes can be regarded as augmented processes with no applied augmentations.
+
+> **Q1e:** How are augmentations *defined*?  Because they're `Process -> Process` transforms,
+> they can't be expressed purely in DSL text without a fixed vocabulary of transform types.
+> I see two options:
+> (a) a small set of built-in named transforms (e.g. `scale(rate=1.5)`,
+>     `add_energy(kind="kWe", pct=0.1)`) that the DSL references by name+params, and the
+>     library knows how to construct from those names; or
+> (b) Python callables registered with the library by name before parsing, then referenced
+>     by name in the DSL.
+> Option (a) keeps everything in the DSL but limits extensibility; option (b) is fully
+> general but requires Python-side setup before DSL parsing.  Which do you prefer, or is a
+> hybrid (built-ins plus a register hook) the right answer?
+>
+
+I really prefer option (b) since the augmentations can truly be arbitrary.  The existing library is naive.
+
+> **Q1f:** How is an augmentation *applied* in the DSL?  E.g., is the syntax something like
+> `apply assembler_mk2 to [tier=1]` on its own line, or is it expressed differently?  And
+> is "apply to all" just `apply assembler_mk2 to *`?
+>
+
+We'll need to iterate on this, but I'm thinking we can apply to individual recipes with `@` annotations like `@assembler_mk2 @speed_mod_mk2` on the same line as the process name `process_name:`, apply to "all subsequent recipes" by putting the annotations on their own line, apply a product of annotations by having multiple lines, e.g.
+```
+@assembler_mk1
+@assembler_mk2
+@assembler_mk3 @speed_mod_mk3
+
+recipe1 = in1 + in2
+
+recipe2 = in4 + 2 in5
+```
+
+> **Q1g:** Naming of augmented entries.  When augmenting produces new library entries, what
+> are their names?  Options: auto-generated suffix (e.g. `"iron via smelt [assembler_mk2]"`),
+> a naming scheme baked into the augmentation definition, or user-specified.  Auto-generation
+> is convenient but the names need to remain stable for `visited`-set deduplication in
+> `_production_graphs` to work correctly.
+>
+
+Yeah adding them in square brackets and sorting them alphabetically when there are multiple is a good solution for naming.
+
+> **Q1h (Factorio case 1):** For assembler tiers — after augmentation, should
+> `production_graphs` see *both* the original (tier=1) and the new (tier=2) entry as
+> candidates simultaneously?  If so, the search space for a library with N recipes and M tiers
+> grows by M× per process depth, which can be a lot.  Or do you filter the library to a single
+> tier before calling `production_graphs`, and the point of generating the augmented entries is
+> just to make it easy to switch between tiers?
+
+I think we should add all the entries to the library, but similar to how we have stop_kinds and skip_processes we can have something like only_augments or skip_augments or something.  We could also stand to improve this "pre-filtering" specification at some point.
 
 
 ## 2. Find a way to mix batch and continuous processes in a graph
@@ -148,6 +206,26 @@ Ideally we would be able to do like a lazy `topk` evaluation rather than a brute
 > flexible), registered in the library (so it can be named and reused in the DSL), or both?
 
 **A3d:** We can start with it as a callable at call time.  We may only have a few of these, so arbitrary library support may not be necessary.
+
+> **Q3e:** What argument(s) does the cost callable receive?  For the primary "cheapest raw
+> ingredients" case, the function needs at minimum the raw inputs (kinds + amounts) — that's
+> the `transfer` Ingredients object already on the `analyze_graph` result dict.  But other
+> cost functions (e.g. total process time) also need per-process counts.  The safest signature
+> is `cost_fn(analysis_result: dict) -> float` where `analysis_result` is one item from
+> `analyze_graph`, since it already carries `transfer`, `inputs`, `sorted_process_counts`,
+> and `total_processes`.  Does that work, or do you need access to the raw `GraphBuilder` as
+> well (e.g. to traverse pool structure)?
+>
+
+Great point.  We probably do need both.  For example there could be a situation where we might want to evaluate the costs of intermediate products, which would require looking at the graph.
+
+> **Q3f:** Should cost-sorted output be a new entry point (e.g. `best_k_graphs(graphs,
+> cost_fn, k)` returning a list), or should `analyze_graphs` / `production_graphs` grow an
+> optional `cost_fn` parameter that reorders their output?  The former is a pure add-on with
+> no API churn; the latter is cleaner to call but requires buffering all graphs before yielding
+> anything, which changes the generator semantics.
+
+The former is the way to go here, I want to keep the option open for iterating through with less memory cost but without ordering guarantees.
 
 
 ## 4. Recheck integrations with crafting_frontend
