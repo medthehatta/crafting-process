@@ -15,7 +15,7 @@ class GraphBuilder:
         self.open_outputs = []
 
     def __repr__(self):
-        node_s = "node" if len(self.processes) > 1 else "nodes"
+        node_s = "nodes" if len(self.processes) > 1 else "node"
         return (
             f"<{self.__class__.__name__} "
             f"[{len(self.processes)} {node_s}]>"
@@ -33,7 +33,6 @@ class GraphBuilder:
         new.processes = {**left.processes, **right.processes}
         new.pools = {**left.pools, **right.pools}
         new.pool_aliases = {**left.pool_aliases, **right.pool_aliases}
-        new.processes = {**left.processes, **right.processes}
         new.open_inputs = left.open_inputs + right.open_inputs
         new.open_outputs = left.open_outputs + right.open_outputs
         return new
@@ -41,7 +40,7 @@ class GraphBuilder:
     def unify(self, other):
         self.processes.update(other.processes)
         self.pools.update(other.pools)
-        self.pool_aliases.update(other.processes)
+        self.pool_aliases.update(other.pool_aliases)
         self.open_inputs.extend(other.open_inputs)
         self.open_outputs.extend(other.open_outputs)
         return self

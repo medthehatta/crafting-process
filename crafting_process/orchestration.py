@@ -22,7 +22,7 @@ def _only(lst):
 
 
 def analyze_graphs(graphs, num_keep=4):
-    return interleave(analyze_graph(g) for g in graphs)
+    return interleave(analyze_graph(g, num_keep=num_keep) for g in graphs)
 
 
 def analyze_graph(graph, num_keep=4):

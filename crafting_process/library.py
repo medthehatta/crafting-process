@@ -77,7 +77,7 @@ def _parse_process_header(s):
     attributes_raw = re.sub(r"^\s*(.+):", r"process=\1", attributes_raw)
     keys = [
         (m.group(1), m.span())
-        for m in re.finditer(r"([A-Za-z_][A-Za-z_0-0]*)=", attributes_raw)
+        for m in re.finditer(r"([A-Za-z_][A-Za-z_0-9]*)=", attributes_raw)
     ]
     end_pad = [(None, (None, None))]
 
