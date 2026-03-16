@@ -95,9 +95,10 @@ Constraint: `0 ≤ M @ x ≤ max_leak` with integer `x ≥ 1`, minimising `sum(x
 
 `best_milp_sequence` starts with max_leak=10000, yields the solution, then tightens
 to `0.9 * max(current_leaks)` and repeats until the solution stops changing.  The
-yielded tuple is `(next_max_leak, answer_dict)` — the leak value is the *next*
-constraint, not the leak of the current solution.  The final answer typically has
-zero actual leak.
+yielded tuple is `(actual_leak, answer_dict)` where `actual_leak = max(M @ x)` for
+the current solution — the worst-case pool imbalance.  The next round's constraint
+is `0.9 * actual_leak` (not yielded).  The final answer has leak=0.0 for any matrix
+that has a perfectly balanced integer solution.
 
 Confirmed via tests: infeasible matrices (e.g. all-negative rows) yield empty sequence.
 

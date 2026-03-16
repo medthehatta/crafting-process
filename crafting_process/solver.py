@@ -44,8 +44,9 @@ def best_milp_sequence(matrix, keys):
     else:
         last = soln["result"].x
         leaks = matrix @ soln["result"].x
-        max_leak = 0.9 * max(leaks)
-        yield (max_leak, soln["answer"])
+        actual_leak = max(leaks)
+        max_leak = 0.9 * actual_leak
+        yield (actual_leak, soln["answer"])
 
     while True:
         try:
@@ -62,5 +63,6 @@ def best_milp_sequence(matrix, keys):
                 return
             last = soln["result"].x
             leaks = matrix @ soln["result"].x
-            max_leak = 0.9 * max(leaks)
-            yield (max_leak, soln["answer"])
+            actual_leak = max(leaks)
+            max_leak = 0.9 * actual_leak
+            yield (actual_leak, soln["answer"])
