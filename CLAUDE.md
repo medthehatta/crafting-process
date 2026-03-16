@@ -97,7 +97,7 @@ test_library.py       51  done
 test_solver.py        18  done
 test_graph.py         42  done
 test_augment.py        0  TODO
-test_orchestration.py  0  TODO — hardest; depends on graph
+test_orchestration.py 42  done
 ```
 
 ## Notes for test_graph.py

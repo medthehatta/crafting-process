@@ -9,16 +9,7 @@ from .graph import GraphBuilder
 from .process import Process
 from .library import Ingredients
 from .solver import best_milp_sequence
-
-
-def _only(lst):
-    lst = list(lst)
-    if len(lst) == 0:
-        raise ValueError("Empty list")
-    elif len(lst) == 1:
-        return lst[0]
-    else:
-        raise ValueError(f"Expected 1 element but found {len(lst)}")
+from .utils import only as _only
 
 
 def analyze_graphs(graphs, num_keep=4):
@@ -101,6 +92,12 @@ def batch_milps(graph):
 
 
 def input_combinations(input_kinds, kind_providers, max_overlap=2):
+    if max_overlap < 1:
+        raise ValueError("max_overlap must be >= 1")
+
+    if not input_kinds:
+        return
+
     # dest: abcde
     # inputs: abx cde a b c d e
     providing = {
@@ -121,13 +118,13 @@ def input_combinations(input_kinds, kind_providers, max_overlap=2):
         # ((0,), (1,), (1,), (2,)) -> (0, 1, 2)
         return tuple(set(sum((list(t) for t in tot), [])))
 
-    return unique(
+    yield from unique(
         itertools.chain.from_iterable(
             (
                 _flatten_tup_of_tups(prod) for prod in
                 itertools.product(*[_c(kind, i) for kind in providing])
             )
-            for i in range(1, min(max_overlap, len(providing)+1))
+            for i in range(1, min(max_overlap, len(providing))+1)
         )
     )
 
