@@ -1,3 +1,4 @@
 *.sw[jklmnop]
 __pycache__
 .python-version
+*.pyc
