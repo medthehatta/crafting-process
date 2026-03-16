@@ -2,6 +2,8 @@
 
 ## 0. Resolve a nitpick about annotating processes for lookup
 
+**DONE**
+
 The DSL currently provides all the attribute parameters like duration=N etc. as arguments to the Process initializer.  This is sometimes required for predefined arguments that can be relevant to any process like duration, but sometimes I would like to provide simple freeform annotations in the DSL that can be used for library lookup.  The Process should be willing to store these annotations even if they are not valid initializer arguments so the library can search for the processes later.
 
 > **Q0a:** What should the DSL syntax for freeform annotations look like?  Options range from
