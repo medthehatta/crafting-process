@@ -104,7 +104,14 @@ We'll need to iterate on this, but I'm thinking we can apply to individual recip
 recipe1 = in1 + in2
 
 recipe2 = in4 + 2 in5
+
+@new_augments
+
+# Does not have @assembler_mk1 etc, just has @new_augments
+recipe3 = in5
 ```
+
+We can "reset" which augments are being applied to a block each time we encounter standalone augment lines.  If we want to apply some augments to both of two groups and some augments to only one or the other, we can just duplicate the ones we want to appear in both groups.
 
 > **Q1g:** Naming of augmented entries.  When augmenting produces new library entries, what
 > are their names?  Options: auto-generated suffix (e.g. `"iron via smelt [assembler_mk2]"`),
@@ -113,7 +120,7 @@ recipe2 = in4 + 2 in5
 > `_production_graphs` to work correctly.
 >
 
-Yeah adding them in square brackets and sorting them alphabetically when there are multiple is a good solution for naming.
+Since the DSL does this with `@` tags, let's just put the tags into the names.  I worry that these augumentations may need to accept parameters, but let's not start there
 
 > **Q1h (Factorio case 1):** For assembler tiers — after augmentation, should
 > `production_graphs` see *both* the original (tier=1) and the new (tier=2) entry as
