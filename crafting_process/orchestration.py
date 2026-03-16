@@ -153,9 +153,12 @@ def _production_graphs(
     max_overlap=2,
     stop_kinds=None,
     skip_processes=None,
+    visited=None,
 ):
     skip_processes = skip_processes or []
     stop_kinds = stop_kinds or []
+    visited = visited if visited is not None else set()
+
     desired_kinds = set(
         kind for (name, kind) in consuming_graph.open_inputs
         if kind not in stop_kinds
@@ -167,10 +170,22 @@ def _production_graphs(
         producers = [
             (name, proc) for (name, proc) in recipes.producing(kind)
             if proc.process not in skip_processes
+            and name not in visited
         ]
         if producers:
             input_recipes.extend(producers)
             recursable_kinds.append(kind)
+
+    # Deduplicate: a process that satisfies multiple desired kinds would
+    # otherwise appear once per kind, producing degenerate combos that
+    # instantiate the same process more than once in a single graph.
+    seen_names = set()
+    deduped = []
+    for item in input_recipes:
+        if item[0] not in seen_names:
+            seen_names.add(item[0])
+            deduped.append(item)
+    input_recipes = deduped
 
     if not input_recipes:
         yield consuming_graph
@@ -186,23 +201,22 @@ def _production_graphs(
         kinds_produced,
         max_overlap=max_overlap,
     )
-    sufficient_input_combos = (
-        # indexed[0] = ("process_name", Process[-A + B])
-        tuple(GraphBuilder.from_process(indexed[i][1]) for i in combo)
-        for combo in combos
-    )
-    for graphs in sufficient_input_combos:
+    for combo in combos:
+        combo_graphs = tuple(GraphBuilder.from_process(indexed[i][1]) for i in combo)
         upstream_graph = GraphBuilder()
-        for g in graphs:
+        for g in combo_graphs:
             upstream_graph.unify(g)
 
         total_graph = upstream_graph.output_into(consuming_graph)
+        new_visited = visited | {indexed[i][0] for i in combo}
+
         yield from _production_graphs(
             recipes,
             total_graph,
             max_overlap=max_overlap,
             stop_kinds=stop_kinds,
             skip_processes=skip_processes,
+            visited=new_visited,
         )
 
 
