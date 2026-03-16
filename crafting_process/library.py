@@ -62,9 +62,9 @@ def _parse_process_header(s):
     # legibility only.  We ignore the other segment marks by
     # re-joining the subsequent tokens.
     if len(segments) > 1:
-        (product_raw, attributes_raw) = (segments[0], " ".join(segments[1:]))
+        (product_raw, attributes_raw) = (segments[0].strip(), " ".join(segments[1:]))
     else:
-        (product_raw, attributes_raw) = (segments[0], "")
+        (product_raw, attributes_raw) = (segments[0].strip(), "")
 
     # Parse the attributes.
     #

@@ -64,6 +64,34 @@ def test_ingredients_arithmetic():
     assert (2 * a)["iron"] == 6
 
 
+def test_ingredients_parse_normalizes_internal_spaces():
+    ing = Ingredients.parse("3  iron  ore")
+    assert ing["iron ore"] == 3
+
+
+def test_ingredients_parse_normalizes_leading_trailing_whitespace():
+    ing = Ingredients.parse("  3 iron  ")
+    assert ing["iron"] == 3
+
+
+def test_ingredients_parse_normalizes_spaces_around_plus():
+    ing = Ingredients.parse("3 iron  +  2 copper")
+    assert ing["iron"] == 3
+    assert ing["copper"] == 2
+
+
+def test_ingredients_double_space_same_as_single_space():
+    # Both spellings must resolve to the same ingredient so arithmetic works
+    a = Ingredients.parse("3  iron  ore")
+    b = Ingredients.parse("2 iron ore")
+    assert (a + b)["iron ore"] == 5
+
+
+def test_ingredients_tabs_treated_as_spaces():
+    ing = Ingredients.parse("3\tiron\tore")
+    assert ing["iron ore"] == 3
+
+
 # ---------------------------------------------------------------------------
 # Process construction
 # ---------------------------------------------------------------------------

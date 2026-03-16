@@ -1,8 +1,19 @@
+import re
+
 from formal_vector import FormalVector
 
 
 class Ingredients(FormalVector):
     _ZERO = "Ingredients.NONE"
+
+    @classmethod
+    def parse(cls, s, **kwargs):
+        # Collapse runs of spaces and tabs to a single space so that ingredient
+        # names like "iron  ore" and "iron ore" are treated identically.
+        # Newlines are intentionally left alone — they are meaningful at the
+        # recipe level but should never appear inside an ingredient string.
+        normalized = re.sub(r"[ \t]+", " ", s).strip()
+        return super().parse(normalized, **kwargs)
 
 
 def describe_process(output_names, process=None):
