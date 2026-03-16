@@ -746,3 +746,214 @@ def test_branching_library_direct_path_has_shallower_depth(branching_library):
     direct_depths = direct_graph.process_depths()
     chain_depths = chain_graph.process_depths()
     assert max(direct_depths.values()) < max(chain_depths.values())
+
+
+# ---------------------------------------------------------------------------
+# Case 6: Single multi-output process covering all consumer needs
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def combo_provider_library():
+    """One process producing both iron and copper; consumer needs both.
+    Tests that a multi-output provider is not indexed twice (dedup fix)."""
+    lib = ProcessLibrary()
+    lib.add_from_text("""
+        2 iron + 1 copper | mine_combo:
+        5 ore
+
+        1 widget | assemble:
+        2 iron + 1 copper
+    """)
+    return lib
+
+
+def test_combo_provider_yields_one_graph(combo_provider_library):
+    graphs = list(production_graphs(combo_provider_library, Ingredients.parse("1 widget")))
+    assert len(graphs) == 1
+
+
+def test_combo_provider_graph_has_no_duplicate_processes(combo_provider_library):
+    graphs = list(production_graphs(combo_provider_library, Ingredients.parse("1 widget")))
+    g = graphs[0]
+    # Only mine_combo, assemble, and the sink "_" process
+    assert len(g.processes) == 3
+
+
+def test_combo_provider_both_kinds_present(combo_provider_library):
+    graphs = list(production_graphs(combo_provider_library, Ingredients.parse("1 widget")))
+    g = graphs[0]
+    pool_kinds = {pool["kind"] for pool in g.pools.values()}
+    assert "iron" in pool_kinds
+    assert "copper" in pool_kinds
+
+
+def test_combo_provider_mine_combo_connected_to_both_pools(combo_provider_library):
+    graphs = list(production_graphs(combo_provider_library, Ingredients.parse("1 widget")))
+    g = graphs[0]
+    # mine_combo should be a source in both the iron pool and the copper pool
+    mine_name = next(n for n in g.processes if "mine_combo" in g.processes[n].describe())
+    iron_pool = next(p for p in g.pools.values() if p["kind"] == "iron")
+    copper_pool = next(p for p in g.pools.values() if p["kind"] == "copper")
+    assert mine_name in iron_pool["inputs"]
+    assert mine_name in copper_pool["inputs"]
+
+
+def test_combo_provider_ore_is_open_input(combo_provider_library):
+    graphs = list(production_graphs(combo_provider_library, Ingredients.parse("1 widget")))
+    g = graphs[0]
+    open_input_kinds = {kind for (_, kind) in g.open_inputs}
+    assert "ore" in open_input_kinds
+
+
+def test_combo_provider_analyze_graph_runs(combo_provider_library):
+    graphs = list(production_graphs(combo_provider_library, Ingredients.parse("1 widget")))
+    results = list(analyze_graph(graphs[0]))
+    assert len(results) >= 1
+    assert results[0]["leak"] == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Case 7: Shared intermediate / diamond dependency
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def shared_intermediate_library():
+    """make_x (produces 2X) feeds both make_y (needs 1X) and make_z (needs 1X).
+    Tests that a single upstream process connects to multiple consumers."""
+    lib = ProcessLibrary()
+    lib.add_from_text("""
+        2 X | make_x:
+        3 ore_a
+
+        1 Y | make_y:
+        1 X + 2 ore_b
+
+        1 Z | make_z:
+        1 X + 3 ore_c
+
+        1 final | combine:
+        1 Y + 1 Z
+    """)
+    return lib
+
+
+def test_shared_intermediate_yields_one_graph(shared_intermediate_library):
+    graphs = list(production_graphs(shared_intermediate_library, Ingredients.parse("1 final")))
+    assert len(graphs) == 1
+
+
+def test_shared_intermediate_process_count(shared_intermediate_library):
+    graphs = list(production_graphs(shared_intermediate_library, Ingredients.parse("1 final")))
+    g = graphs[0]
+    # make_x, make_y, make_z, combine, sink "_"
+    assert len(g.processes) == 5
+
+
+def test_shared_intermediate_x_pool_has_one_producer(shared_intermediate_library):
+    graphs = list(production_graphs(shared_intermediate_library, Ingredients.parse("1 final")))
+    g = graphs[0]
+    x_pools = [p for p in g.pools.values() if p["kind"] == "X"]
+    assert len(x_pools) == 1
+    assert len(x_pools[0]["inputs"]) == 1
+
+
+def test_shared_intermediate_x_pool_has_two_consumers(shared_intermediate_library):
+    graphs = list(production_graphs(shared_intermediate_library, Ingredients.parse("1 final")))
+    g = graphs[0]
+    x_pools = [p for p in g.pools.values() if p["kind"] == "X"]
+    assert len(x_pools[0]["outputs"]) == 2
+
+
+def test_shared_intermediate_raw_inputs(shared_intermediate_library):
+    graphs = list(production_graphs(shared_intermediate_library, Ingredients.parse("1 final")))
+    g = graphs[0]
+    open_input_kinds = {kind for (_, kind) in g.open_inputs}
+    assert open_input_kinds == {"ore_a", "ore_b", "ore_c"}
+
+
+def test_shared_intermediate_analyze_graph_runs(shared_intermediate_library):
+    graphs = list(production_graphs(shared_intermediate_library, Ingredients.parse("1 final")))
+    results = list(analyze_graph(graphs[0]))
+    assert len(results) >= 1
+    assert results[0]["total_processes"] == 5  # make_x, make_y, make_z, combine, sink "_"
+
+
+def test_shared_intermediate_analyze_graph_zero_leak(shared_intermediate_library):
+    graphs = list(production_graphs(shared_intermediate_library, Ingredients.parse("1 final")))
+    results = list(analyze_graph(graphs[0]))
+    assert results[0]["leak"] == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Case 8: max_overlap=3 with 3 kinds × 3 providers
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def gadget_library():
+    """3 independent providers per kind (iron/copper/glass), 1 assembler.
+    At max_overlap=2: one provider per kind, all combos of 2 providers per kind.
+    At max_overlap=3: adds the combo using all 3 providers for every kind."""
+    lib = ProcessLibrary()
+    lib.add_from_text("""
+        2 iron | smelt_a:
+        3 ore_a
+
+        2 iron | smelt_b:
+        3 ore_b
+
+        2 iron | smelt_c:
+        3 ore_c
+
+        1 copper | mine_a:
+        2 coal_a
+
+        1 copper | mine_b:
+        2 coal_b
+
+        1 copper | mine_c:
+        2 coal_c
+
+        1 glass | forge_a:
+        3 sand_a
+
+        1 glass | forge_b:
+        3 sand_b
+
+        1 glass | forge_c:
+        3 sand_c
+
+        1 gadget | assemble:
+        2 iron + 1 copper + 1 glass
+    """)
+    return lib
+
+
+def test_gadget_max_overlap_2_graph_count(gadget_library):
+    graphs = list(production_graphs(gadget_library, Ingredients.parse("1 gadget"), max_overlap=2))
+    # input_combinations iterates i in range(1, min(max_overlap, len(kinds))+1).
+    # len(kinds)=3, max_overlap=2 → i in [1, 2].
+    # For each i, it forms one combo-tuple per unique flattening of
+    # product(*[C(providers_for_kind, i) for kind in kinds]).
+    # unique() deduplicates across i values. Empirical result: 54 graphs.
+    assert len(graphs) == 54
+
+
+def test_gadget_max_overlap_3_graph_count(gadget_library):
+    graphs = list(production_graphs(gadget_library, Ingredients.parse("1 gadget"), max_overlap=3))
+    # max_overlap=3 adds i=3: C(3,3)=1 per kind → 1 extra combo (all 9 providers).
+    # Total: 54 + 1 = 55 graphs.
+    assert len(graphs) == 55
+
+
+def test_gadget_max_overlap_3_has_all_nine_providers(gadget_library):
+    """The max_overlap=3 combo that uses all 3 providers per kind should exist."""
+    graphs = list(production_graphs(gadget_library, Ingredients.parse("1 gadget"), max_overlap=3))
+    # Largest graph: 9 upstream + assemble + sink = 11 processes
+    largest = max(graphs, key=lambda g: len(g.processes))
+    assert len(largest.processes) == 11
+
+
+def test_gadget_max_overlap_1_graph_count(gadget_library):
+    # Only one provider per kind: 3^3 = 27 graphs
+    graphs = list(production_graphs(gadget_library, Ingredients.parse("1 gadget"), max_overlap=1))
+    assert len(graphs) == 27
