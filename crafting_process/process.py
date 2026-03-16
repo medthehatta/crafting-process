@@ -44,12 +44,14 @@ class Process:
         inputs=None,
         duration=None,
         process=None,
+        annotations=None,
     ):
         # This is just metadata saying what kind of process it is
         self.process = process
         self.outputs = outputs
         self.inputs = inputs or Ingredients.zero()
         self.duration = duration
+        self.annotations = annotations if annotations is not None else {}
 
     def copy(self, new_name=None):
         return type(self)(
@@ -57,6 +59,7 @@ class Process:
             inputs=self.inputs,
             duration=self.duration,
             process=new_name if new_name else self.process,
+            annotations=self.annotations.copy(),
         )
 
     @property
@@ -88,6 +91,7 @@ class Process:
             "duration": self.duration,
             "transfer_summary": str(self.transfer),
             "process": self.process,
+            "annotations": self.annotations,
         }
 
     def __repr__(self):

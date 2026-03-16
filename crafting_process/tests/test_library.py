@@ -364,11 +364,12 @@ def test_filter_with_custom_predicate(library):
 # ProcessPredicates
 # ---------------------------------------------------------------------------
 
-def make_process(outputs, inputs="", process=None):
+def make_process(outputs, inputs="", process=None, annotations=None):
     return Process(
         outputs=Ingredients.parse(outputs),
         inputs=Ingredients.parse(inputs) if inputs else Ingredients.zero(),
         process=process,
+        annotations=annotations or {},
     )
 
 
@@ -451,3 +452,146 @@ def test_outputs_any_of():
     assert pred(make_process("1 widget")) is True
     assert pred(make_process("1 gear")) is True
     assert pred(make_process("1 scrap")) is False
+
+
+# ---------------------------------------------------------------------------
+# _parse_process_header — annotation block parsing
+# ---------------------------------------------------------------------------
+
+def test_header_annotation_single():
+    result = _parse_process_header("2 iron | smelt: [tier=2]")
+    assert result["annotations"] == {"tier": 2}
+
+
+def test_header_annotation_multiple():
+    result = _parse_process_header("2 iron | smelt: [tier=2 | energy=150]")
+    assert result["annotations"] == {"tier": 2, "energy": 150}
+
+
+def test_header_annotation_string_value():
+    result = _parse_process_header("1 widget | assemble: [assembler=mk2]")
+    assert result["annotations"] == {"assembler": "mk2"}
+
+
+def test_header_annotation_float_value():
+    result = _parse_process_header("2 iron | smelt: [efficiency=1.5]")
+    assert result["annotations"]["efficiency"] == pytest.approx(1.5)
+
+
+def test_header_annotation_bare_true_stays_string():
+    result = _parse_process_header("2 iron | smelt: [fast=true]")
+    assert result["annotations"]["fast"] == "true"
+
+
+def test_header_no_annotation_block():
+    result = _parse_process_header("2 iron | smelt: duration=2")
+    assert result["annotations"] == {}
+
+
+def test_header_annotation_with_duration():
+    result = _parse_process_header("2 iron | smelt: duration=2 [tier=2]")
+    assert result["duration"] == 2
+    assert result["annotations"] == {"tier": 2}
+
+
+def test_header_annotation_with_inline_inputs():
+    result = _parse_process_header("2 iron | smelt: [tier=2] = 3 ore")
+    assert result["annotations"] == {"tier": 2}
+    assert result["inputs"] == "3 ore"
+
+
+def test_header_annotation_outputs_unaffected():
+    result = _parse_process_header("2 iron + 1 copper | mine: [tier=1]")
+    assert result["outputs"] == "2 iron + 1 copper"
+
+
+# ---------------------------------------------------------------------------
+# process_from_spec_dict — annotations routed correctly
+# ---------------------------------------------------------------------------
+
+def test_spec_dict_annotations_on_process():
+    spec = {"outputs": "1 widget", "inputs": "2 iron", "annotations": {"tier": 2}}
+    p = process_from_spec_dict(spec)
+    assert p.annotations == {"tier": 2}
+
+
+def test_spec_dict_no_annotations_key_defaults_empty():
+    spec = {"outputs": "1 widget", "inputs": "2 iron"}
+    p = process_from_spec_dict(spec)
+    assert p.annotations == {}
+
+
+# ---------------------------------------------------------------------------
+# ProcessPredicates.annotation_matches
+# ---------------------------------------------------------------------------
+
+def test_annotation_matches_eq():
+    p = make_process("1 widget", annotations={"tier": 2})
+    assert ProcessPredicates.annotation_matches("tier", lambda v: v == 2)(p) is True
+
+
+def test_annotation_matches_miss():
+    p = make_process("1 widget", annotations={"tier": 2})
+    assert ProcessPredicates.annotation_matches("tier", lambda v: v == 3)(p) is False
+
+
+def test_annotation_matches_absent_key_returns_false():
+    p = make_process("1 widget", annotations={})
+    assert ProcessPredicates.annotation_matches("tier", lambda v: v == 2)(p) is False
+
+
+def test_annotation_matches_lt():
+    p = make_process("1 widget", annotations={"tier": 2})
+    assert ProcessPredicates.annotation_matches("tier", lambda v: v < 3)(p) is True
+    assert ProcessPredicates.annotation_matches("tier", lambda v: v < 2)(p) is False
+
+
+def test_annotation_matches_composed_with_outputs_part():
+    p = make_process("1 widget", inputs="2 iron", annotations={"tier": 2})
+    pred = ProcessPredicates.and_(
+        ProcessPredicates.annotation_matches("tier", lambda v: v == 2),
+        ProcessPredicates.outputs_part("widget"),
+    )
+    assert pred(p) is True
+    assert pred(make_process("1 gear", annotations={"tier": 2})) is False
+    assert pred(make_process("1 widget", annotations={"tier": 1})) is False
+
+
+def test_lib_filter_by_annotation(library):
+    # library fixture has no annotations, so build a fresh one
+    lib = ProcessLibrary()
+    lib.add_from_text("""
+        2 iron | smelt_a: [tier=1]
+        3 ore_a
+
+        2 iron | smelt_b: [tier=2]
+        3 ore_b
+
+        1 widget | assemble: [tier=2]
+        2 iron
+    """)
+    tier2 = lib.filter(ProcessPredicates.annotation_matches("tier", lambda v: v == 2))
+    assert len(tier2) == 2
+    assert all(proc.annotations["tier"] == 2 for (_, proc) in tier2)
+
+
+def test_lib_filter_annotation_and_output():
+    lib = ProcessLibrary()
+    lib.add_from_text("""
+        2 iron | smelt_a: [tier=1]
+        3 ore_a
+
+        2 iron | smelt_b: [tier=2]
+        3 ore_b
+
+        1 widget | assemble: [tier=2]
+        2 iron
+    """)
+    pred = ProcessPredicates.and_(
+        ProcessPredicates.annotation_matches("tier", lambda v: v == 2),
+        ProcessPredicates.outputs_part("iron"),
+    )
+    results = lib.filter(pred)
+    assert len(results) == 1
+    assert results[0][1].annotations["tier"] == 2
+    assert results[0][1].outputs["iron"] == 2

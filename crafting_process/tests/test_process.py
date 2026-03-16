@@ -222,3 +222,42 @@ def test_repr_includes_process_name_and_duration():
 def test_repr_no_process_name_uses_fallback():
     p = Process(outputs=Ingredients.parse("1 widget"))
     assert "Process" in repr(p)
+
+
+# ---------------------------------------------------------------------------
+# Process.annotations
+# ---------------------------------------------------------------------------
+
+def test_annotations_default_empty():
+    p = Process(outputs=Ingredients.parse("1 widget"))
+    assert p.annotations == {}
+
+
+def test_annotations_stored():
+    p = Process(outputs=Ingredients.parse("1 widget"), annotations={"tier": 2, "energy": 150.0})
+    assert p.annotations["tier"] == 2
+    assert p.annotations["energy"] == 150.0
+
+
+def test_annotations_copy_preserved():
+    p = Process(outputs=Ingredients.parse("1 widget"), annotations={"tier": 2})
+    c = p.copy()
+    assert c.annotations == {"tier": 2}
+
+
+def test_annotations_copy_is_independent():
+    p = Process(outputs=Ingredients.parse("1 widget"), annotations={"tier": 2})
+    c = p.copy()
+    c.annotations["tier"] = 99
+    assert p.annotations["tier"] == 2
+
+
+def test_annotations_in_to_dict():
+    p = Process(outputs=Ingredients.parse("1 widget"), annotations={"tier": 2})
+    assert p.to_dict()["annotations"] == {"tier": 2}
+
+
+def test_annotations_from_transfer():
+    transfer = Ingredients.parse("2 widget") - Ingredients.parse("3 iron")
+    p = Process.from_transfer(transfer, annotations={"tier": 1})
+    assert p.annotations == {"tier": 1}

@@ -57,10 +57,11 @@ tests/            pytest suite — function style, no test classes
 
 ```
 Process
-  .outputs: Ingredients
-  .inputs:  Ingredients
-  .duration: float | None        (None = batch-only)
-  .process:  str | None          (process type name — metadata, used by skip_processes)
+  .outputs:     Ingredients
+  .inputs:      Ingredients
+  .duration:    float | None        (None = batch-only)
+  .process:     str | None          (process type name — metadata, used by skip_processes)
+  .annotations: dict[str, int|float|str]  (freeform metadata; empty dict by default)
   .transfer        = outputs - inputs
   .transfer_rate   = transfer / duration  (raises if no duration)
   .transfer_quantity(batch=False) dispatches to rate or raw transfer
@@ -129,7 +130,15 @@ foo = 2 bar
 
 # Attribute parsing: key=value pairs after |; numeric values parsed as numbers
 widget | stamping: duration=4 | tier=2
+
+# Freeform annotations: [key=val | key2=val2] bracket block, after initializer params
+# Values: int/float auto-detected via JSON; strings as fallback; bare true/false stay as str
+2 iron | smelt: duration=2 [tier=2 | energy=150]
+1 widget | assemble: [assembler=mk2 | tier=2] = 2 iron + 1 copper
 ```
+
+`ProcessPredicates.annotation_matches(key, pred)` — filters library by annotation value;
+`pred` is any callable `value -> bool`. Composes with `and_`/`or_`/`not_` as usual.
 
 `process_name` in the header sets `proc.process` — used by `skip_processes` in
 `production_graphs`. `ProcessLibrary.mkname()` builds the library key from
@@ -231,15 +240,15 @@ Each `counts` entry: `(repeat_count, process.describe(), process_slug)`.
 
 ```
 test_utils.py          4  done
-test_process.py       29  done
-test_library.py       53  done
+test_process.py       35  done
+test_library.py       75  done
 test_solver.py        18  done
 test_graph.py         49  done  (build_matrix and build_batch_matrix both covered)
 test_augment.py        0  TODO — skipped; AugmentedProcess not supported by library.py
-test_orchestration.py 69  done  (all passing)
+test_orchestration.py 86  done  (all passing)
 ```
 
-Total: 222 tests, all passing (`uv run pytest`).
+Total: 263 tests, all passing (`uv run pytest`).
 
 ### Upcoming test work
 

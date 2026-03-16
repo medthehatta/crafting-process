@@ -29,7 +29,47 @@ def parse_process(s):
         raise ValueError(f"Found too many lines in (next line):\n{s}")
 
 
+def _parse_annotation_block(s):
+    """Extract and remove a [key=val | key2=val2] block from s.
+
+    Returns (cleaned_s, annotations_dict).  If no block is found, returns
+    (s, {}).  Values are JSON-decoded (int/float/string); bare true/false are
+    kept as strings to avoid bool footguns.
+    """
+    m = re.search(r'\[([^\]]*)\]', s)
+    if not m:
+        return s, {}
+
+    interior = m.group(1)
+    cleaned = s[:m.start()] + s[m.end():]
+
+    annotations = {}
+    for pair in re.split(r'\s*\|\s*', interior):
+        pair = pair.strip()
+        if not pair:
+            continue
+        if '=' not in pair:
+            raise ValueError(f"Annotation '{pair}' is not in key=value format")
+        key, _, raw_val = pair.partition('=')
+        key = key.strip()
+        raw_val = raw_val.strip()
+        # Reject bare JSON booleans; keep them as strings
+        if raw_val in ('true', 'false', 'null'):
+            annotations[key] = raw_val
+        else:
+            try:
+                annotations[key] = json.loads(raw_val)
+            except json.decoder.JSONDecodeError:
+                annotations[key] = raw_val
+
+    return cleaned, annotations
+
+
 def _parse_process_header(s):
+    # Extract annotation block first, before any | splitting, so that
+    # pipes inside [...] don't collide with the outer segment separator.
+    s, annotations = _parse_annotation_block(s)
+
     # It can be valid to provide the entire recipe in the "header" by
     # separating inputs and outputs with " = ".
     #
@@ -97,6 +137,7 @@ def _parse_process_header(s):
         "outputs": product_raw,
         **input_dict,
         **attributes,
+        "annotations": annotations,
     }
 
 
@@ -170,6 +211,12 @@ class ProcessPredicates(Predicates):
     def uses_process(cls, process_name, process):
         return process.process == process_name
 
+    @classmethod
+    @curry
+    def annotation_matches(cls, key, pred, process):
+        v = process.annotations.get(key)
+        return v is not None and pred(v)
+
 
 class GraphPredicates(Predicates):
 
@@ -219,12 +266,13 @@ def process_from_spec_dict(spec):
         else Ingredients.zero()
     )
 
+    annotations = spec.get("annotations", {})
     kwargs = {
         k: v for (k, v) in spec.items()
-        if k not in ["inputs", "outputs"]
+        if k not in ["inputs", "outputs", "annotations"]
     }
 
-    return Process(outputs=outputs, inputs=inputs, **kwargs)
+    return Process(outputs=outputs, inputs=inputs, annotations=annotations, **kwargs)
 
 
 def parse_processes(lines):
