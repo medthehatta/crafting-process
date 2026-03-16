@@ -112,7 +112,7 @@ def input_combinations(input_kinds, kind_providers, max_overlap=2):
     }
 
     def _c(kind, i):
-        # a, 1 = [abx, a]
+        # a, 1 = [(abx,), (a,)]
         # a, 2 = [(abx, a)]
         # a, 3 = []
         return itertools.combinations(providing[kind], i)

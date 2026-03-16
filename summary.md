@@ -212,15 +212,109 @@ anything reads it — worth investigating before writing tests for it.
 
 ## Notes for test_orchestration.py
 
-The main public surface is `production_graphs` + `analyze_graph` + `printable_analysis`.
-These are integration-level tests; a small ProcessLibrary fixture (3-4 processes in a
-linear chain) is sufficient to exercise the full flow.
+### Functions to test
 
-`input_combinations` is a pure function with no dependencies — good unit test target.
+| Function | Level | Notes |
+|---|---|---|
+| `input_combinations` | unit | pure function, no fixtures |
+| `batch_milps` | unit | needs a hand-built connected graph |
+| `production_graphs` | integration | needs ProcessLibrary fixture |
+| `analyze_graph` | integration | needs graph from production_graphs |
+| `analyze_graphs` | integration | thin wrapper, lightweight |
+| `printable_analysis` | integration | string-rendering, consumes generator |
 
-`analyze_graph` expects a graph with a `"_"` sentinel open_output (the sink process
-injected by `production_graphs`) — this is easy to forget when constructing test graphs
-manually.
+### Fixture: `linear_library`
 
-`_only` in orchestration.py is a duplicate of `utils.only` — a cleanup to make before
-or alongside adding tests.
+A two-process chain is the minimal useful fixture (three would also work):
+
+```
+2 iron | smelt:
+3 ore
+
+1 widget | press:
+2 iron
+```
+
+Add via `lib.add_from_text(...)`. After building with `production_graphs(lib, Ingredients.parse("1 widget"))`, the resulting graph has:
+- Processes: sink (`"_"` output), press, smelter
+- Pools: iron pool, widget pool
+- `open_outputs`: `[("sink", "_")]`
+- `open_inputs`: `[("smelter", "ore")]`
+- MILP solution: smelter=1, press=1, sink=1 (all balanced at 1:1:1)
+- `result["inputs"]` = `[(3, "ore")]`
+
+The sentinel sink process outputs `"_"` and inputs the desired resource (`1 widget`).
+It is created by `production_graphs` via `Process.from_transfer(Ingredients.parse("_") - transfer)`.
+
+### `input_combinations` tests
+
+- Single kind, single provider → `[(0,)]`
+- Single kind, two providers, `max_overlap=2` → `[(0,), (1,)]` (i=1 only)
+- Single kind, two providers, `max_overlap=3` → `[(0,), (1,), (0, 1)]` (adds i=2)
+- Two kinds, one provider per kind → a single tuple covering both
+- Provider covering multiple kinds → appears once (uniqueness via `unique`)
+- Results are unique — never duplicated
+
+### `analyze_graph` result structure
+
+After `next(results)`:
+- `result["desired"]` is `Ingredients` equal to `Ingredients.parse("1 widget")`
+- `result["total_processes"]` equals real process count + 1 (sentinel included in MILP)
+- `result["leak"]` is `float`, `0.0` for a balanced graph
+- `result["transfer"]` is an `Ingredients` instance
+- `result["inputs"]` is `[(3, "ore")]` — raw material requirements, `"_"` filtered out
+- `result["sorted_process_counts"]` is a list of `(count, desc, name)` sorted deepest-first;
+  the sentinel `"_"` entry is present here (filtered only in `printable_analysis`)
+
+### `printable_analysis` tests
+
+- Contains desired resource name in header
+- Skips the `"_"` sentinel entry (does not appear in output)
+- Lists at least one process count line in format `Nx desc`
+- Lists raw material inputs
+- Consumes the generator — calling twice on the same generator fails
+
+### Open questions / concerns for the user to address
+
+**Q1: `input_combinations` with `max_overlap=1`**
+`range(1, min(1, n+1))` = `range(1,1)` = empty, so the function yields nothing.
+This means `max_overlap` must be ≥ 2 to get any results. Is this intentional, or
+should there be a guard? Worth noting in a comment or docstring.
+
+**A1:** Great catch!  I have updated this to `min(max_overlap, len(providing))+1`, which will admit max_overlap=1.  We should raise a ValueError on max_overlap=0.  Please adjust input_combinations and test with the fixed behavior.
+
+**Q2: `input_combinations` with no `input_kinds`**
+When `input_kinds=[]`, `providing={}`, and `itertools.product()` (no args) yields
+one empty tuple `()`. `_flatten_tup_of_tups(())` returns `()`. So the function
+yields a single empty combo `()`. Is this correct? `_production_graphs` won't call
+it with an empty list (it bails out earlier), but worth knowing.
+
+**A2:** Another great catch.  This is quite a degenerate set of inputs, but in this case we want to return an empty generator, not a generator with a single empty result.  Please fix this behavior in input_combinations and then add the test for the fixed behavior.
+
+**Q3: `printable_analysis` on empty generator**
+`next(aly)` raises `StopIteration` if the generator is empty. Is this a
+programming error we don't need to guard against, or should tests document it?
+
+**A3:** Meh, printable_analysis is generally called by humans interactively, or by context-aware client code.  Tests can document this kinda crappy but harmless behavior.
+
+**Q4: `result["total_processes"]` counts the sentinel**
+`sum(c for (c, _, _) in m["counts"])` includes the sink process in the total.
+`printable_analysis` subtracts 1 (`tot = a["total_processes"] - 1`) to get the
+real count. Should tests assert `result["total_processes"] - 1 == expected_real`,
+or just `>= 1`? I'll use `- 1` to be precise.
+
+**A4:** Good instinct on seeing the sentinel as a hack and a possible pain point.  Let's assert on the real count, not one less.  It is possible to analyze a situation with no sentinel, and if the sentinel is there, the caller should be aware of it and can do the subtraction itself.
+
+**Q5: `_only` cleanup**
+`orchestration._only` still duplicates `utils.only`. Should this be cleaned up
+before writing tests (so tests import from one place), or test as-is and clean up
+later?
+
+**A5:** Yes, please clean this up, you are correct that it's redundant.
+
+**Q6: Multi-recipe fixture for `production_graphs` branching**
+A fixture with two alternative producers for the same kind (e.g. two ways to make
+iron) would exercise `input_combinations` in the integration path. Worth adding as
+a second fixture, or overkill?
+
+**A6:** Let's not add that now, but we will definitely add more complex tests shortly.  Multi-recipe construction, processes that produce multiple outputs, and avoiding dependency loops are all concerns we will need to address with tests, but we can do that in a subsequent pass.
