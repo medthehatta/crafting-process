@@ -4,10 +4,11 @@
 # All processes are batch (no duration).  One "craft" = one run.
 # Exercises:
 #   * Batch MILP across deep crafting chains
-#   * Multi-output process (trim_leather → trimmed + scraps)
-#   * Shared intermediate (iron_buckle consumed by 3 recipes)
+#   * Multi-output process (trim leather → trimmed + scraps)
+#   * Shared intermediate (iron buckle consumed by 3 recipes)
 #   * journeyman_tools augment: mul_outputs(2) doubles yield
 #   * stop_kinds to buy intermediate materials outright
+#   * Spaces in process names (no underscore needed)
 #   * Annotations: tier + profession
 # ================================================================
 
@@ -17,23 +18,23 @@
 # No augments: furnace / workbench operations with fixed yield.
 # ----------------------------------------------------------------
 
-1 iron_bar | smelt_iron [tier=1 | profession=smelting]
+1 iron_bar | smelt iron [tier=1 | profession=smelting]
 6 iron_ore
 
-1 copper_bar | smelt_copper [tier=1 | profession=smelting]
+1 copper_bar | smelt copper [tier=1 | profession=smelting]
 6 copper_ore
 
-1 grinding_stone | grind_stone [tier=1 | profession=stonecutting]
+1 grinding_stone | grind stone [tier=1 | profession=stonecutting]
 4 rough_stone
 
 # Multi-output: trimming hides yields two distinct products.
 # Downstream leatherworking consumes trimmed_leather (padding,
 # armor) and leather_scrap (padding filler).  MILP must balance
-# trim_leather run-count so neither product overflows.
-2 trimmed_leather + 1 leather_scrap | trim_leather [tier=1 | profession=leatherworking]
+# trim leather run-count so neither product overflows.
+2 trimmed_leather + 1 leather_scrap | trim leather [tier=1 | profession=leatherworking]
 3 light_leather
 
-1 linen_bolt | bolt_linen [tier=1 | profession=tailoring]
+1 linen_bolt | bolt linen [tier=1 | profession=tailoring]
 2 hemp_cloth
 
 
@@ -45,35 +46,35 @@
 
 @journeyman_tools
 
-1 iron_buckle | craft_buckle [tier=2 | profession=blacksmithing]
+1 iron_buckle | craft buckle [tier=2 | profession=blacksmithing]
 2 iron_bar
 
-1 copper_ring | craft_ring [tier=2 | profession=jewelcrafting]
+1 copper_ring | craft ring [tier=2 | profession=jewelcrafting]
 3 copper_bar
 
-# leather_padding consumes BOTH outputs of trim_leather,
-# forming a second shared-intermediate link alongside iron_buckle.
-1 leather_padding | craft_padding [tier=2 | profession=leatherworking]
+# leather padding consumes BOTH outputs of trim leather,
+# forming a second shared-intermediate link alongside iron buckle.
+1 leather_padding | craft padding [tier=2 | profession=leatherworking]
 2 trimmed_leather + 1 leather_scrap
 
 
 # ----------------------------------------------------------------
 # Tier 3 — Finished gear
 # journeyman_tools gives doubled output for high-tier items too.
-# iron_buckle is a shared intermediate: forge_shield, craft_armor,
-# and craft_amulet all require it, creating a convergence point.
+# iron_buckle is a shared intermediate: forge shield, craft armor,
+# and craft amulet all require it, creating a convergence point.
 # ----------------------------------------------------------------
 
 @journeyman_tools
 
-1 iron_sword | forge_sword [tier=3 | profession=blacksmithing]
+1 iron_sword | forge sword [tier=3 | profession=blacksmithing]
 8 iron_bar + 1 grinding_stone
 
-1 iron_shield | forge_shield [tier=3 | profession=blacksmithing]
+1 iron_shield | forge shield [tier=3 | profession=blacksmithing]
 12 iron_bar + 2 grinding_stone + 2 iron_buckle
 
-1 light_leather_armor | craft_armor [tier=3 | profession=leatherworking]
+1 light_leather_armor | craft armor [tier=3 | profession=leatherworking]
 6 trimmed_leather + 2 iron_buckle + 1 leather_padding
 
-1 copper_amulet | craft_amulet [tier=3 | profession=jewelcrafting]
+1 copper_amulet | craft amulet [tier=3 | profession=jewelcrafting]
 4 copper_ring + 1 iron_buckle

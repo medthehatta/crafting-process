@@ -69,6 +69,22 @@ def analyze_graph(graph, num_keep=4):
 
         result["sorted_process_counts"] = counts_by_product
 
+        # Actual yield of each desired kind: sum outputs across all producers.
+        result["yield"] = {
+            kind: sum(
+                count_by_process.get(name, 0) * proc.outputs[kind]
+                for (name, proc) in graph.processes.items()
+                if kind in proc.outputs.nonzero_components
+            )
+            for kind in desired.nonzero_components
+        }
+
+        # Applied augments keyed by process slug, for optional display.
+        result["process_augments"] = {
+            name: proc.applied_augments
+            for (name, proc) in graph.processes.items()
+        }
+
         yield result
 
 
@@ -227,7 +243,7 @@ def _production_graphs(
         )
 
 
-def printable_analysis(aly):
+def printable_analysis(aly, show_augments=False):
     out_lines = []
 
     first = next(aly)
@@ -242,6 +258,26 @@ def printable_analysis(aly):
         tot = a["total_processes"] - 1
         tot_s = f"1 process" if tot == 1 else f"{tot} processes"
         out_lines.append(f"{i}) {tot_s}, {a['leak']} leak")
+
+        # Yield line: actual output quantity of each desired kind.
+        yield_dict = a.get("yield", {})
+        if yield_dict:
+            desired_obj = a["desired"]
+            yield_parts = []
+            want_parts = []
+            for kind in sorted(yield_dict):
+                actual = yield_dict[kind]
+                amt_str = str(int(actual)) if int(actual) == actual else f"{actual:.2f}"
+                yield_parts.append(f"{amt_str} {kind}")
+                wanted = desired_obj[kind]
+                if actual != wanted:
+                    w_str = str(int(wanted)) if int(wanted) == wanted else f"{wanted:.2f}"
+                    want_parts.append(f"{w_str} {kind}")
+            makes_line = f"   makes: {' + '.join(yield_parts)}"
+            if want_parts:
+                makes_line += f"  (want: {' + '.join(want_parts)})"
+            out_lines.append(makes_line)
+
         out_lines.append("")
 
         for (amt, inp) in a["inputs"]:
@@ -253,10 +289,15 @@ def printable_analysis(aly):
 
         out_lines.append("")
 
+        augments_map = a.get("process_augments", {}) if show_augments else {}
         for (count, desc, procname) in a["sorted_process_counts"]:
             if desc == "_":
                 continue
-            out_lines.append(f"    {count}x {desc}")
+            label = desc
+            augs = augments_map.get(procname, [])
+            if augs:
+                label += " " + " ".join(f"@{aug}" for aug in augs)
+            out_lines.append(f"    {count}x {label}")
 
         out_lines.append("")
 

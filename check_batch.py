@@ -66,7 +66,7 @@ def top_graphs(graphs, n=5):
     return [g for (_, _, g) in scored[:n]]
 
 
-def run_analysis(label, transfer, num_show=4, **pg_kwargs):
+def run_analysis(label, transfer, num_show=4, show_augments=True, **pg_kwargs):
     print(f"\n{DIVIDER}")
     print(f"  {label}")
     graphs = list(production_graphs(lib, transfer, **pg_kwargs))
@@ -76,7 +76,7 @@ def run_analysis(label, transfer, num_show=4, **pg_kwargs):
         print("  (no solution found)\n")
         return
     best = top_graphs(graphs, n=num_show)
-    print(printable_analysis(analyze_graphs(best, num_keep=2)))
+    print(printable_analysis(analyze_graphs(best, num_keep=2), show_augments=show_augments))
 
 
 # ----------------------------------------------------------------

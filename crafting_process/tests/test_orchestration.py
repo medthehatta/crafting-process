@@ -262,6 +262,41 @@ def test_analyze_graph_sorted_process_counts_deepest_first(linear_library):
     assert iron_idx < widget_idx
 
 
+def test_analyze_graph_yield_present(linear_library):
+    result = _first_result(linear_library, "1 widget")
+    assert "yield" in result
+
+
+def test_analyze_graph_yield_matches_request_when_balanced(linear_library):
+    # 1x press → 1 widget per run; no leak on balanced graph
+    result = _first_result(linear_library, "1 widget")
+    assert result["yield"]["widget"] == pytest.approx(1.0)
+
+
+def test_analyze_graph_yield_reflects_mul_outputs():
+    # Process produces 2 widgets per run; requesting 1 → yield == 2
+    lib = ProcessLibrary()
+    from crafting_process.augment import Augments
+    lib.register_augment("double", Augments.mul_outputs(2))
+    lib.add_from_text("1 widget | press:\n2 iron\n\n@double\n\n2 iron | smelt:\n3 ore\n")
+    # Use the un-augmented press so yield == 1, as a baseline sanity check
+    g = next(production_graphs(lib, Ingredients.parse("1 widget"),
+                                skip_augments=["double"]))
+    r = next(analyze_graph(g))
+    assert r["yield"]["widget"] == pytest.approx(1.0)
+
+
+def test_analyze_graph_process_augments_present(linear_library):
+    result = _first_result(linear_library, "1 widget")
+    assert "process_augments" in result
+
+
+def test_analyze_graph_process_augments_originals_empty(linear_library):
+    result = _first_result(linear_library, "1 widget")
+    for slug, augs in result["process_augments"].items():
+        assert augs == []
+
+
 def test_analyze_graph_is_generator(linear_library):
     g = next(production_graphs(linear_library, Ingredients.parse("1 widget")))
     assert isinstance(analyze_graph(g), types.GeneratorType)
@@ -325,6 +360,44 @@ def test_printable_analysis_consumes_generator(linear_library):
     printable_analysis(aly)
     with pytest.raises(StopIteration):
         next(aly)
+
+
+def test_printable_analysis_contains_makes_line(linear_library):
+    result = printable_analysis(_make_analysis(linear_library, "1 widget"))
+    assert "makes:" in result
+
+
+def test_printable_analysis_makes_line_shows_yield(linear_library):
+    result = printable_analysis(_make_analysis(linear_library, "1 widget"))
+    assert "1 widget" in result
+
+
+def test_printable_analysis_show_augments_false_no_at_signs(linear_library):
+    # Default: no @augment suffixes on process lines
+    result = printable_analysis(_make_analysis(linear_library, "1 widget"),
+                                show_augments=False)
+    process_lines = [l for l in result.splitlines() if "x " in l and l.strip().startswith(tuple("0123456789"))]
+    assert not any("@" in l for l in process_lines)
+
+
+def test_printable_analysis_show_augments_true_appends_augments():
+    from crafting_process.augment import Augments
+    lib = ProcessLibrary()
+    lib.register_augment("mk2", Augments.mul_outputs(2))
+    lib.add_from_text("""
+        1 widget | press:
+        2 iron
+
+        @mk2
+
+        1 iron | smelt:
+        3 ore
+    """)
+    # Both base and mk2 smelt variants are in the library; analyze all graphs
+    # so at least one result comes from the mk2-augmented smelt.
+    graphs = list(production_graphs(lib, Ingredients.parse("1 widget")))
+    result = printable_analysis(analyze_graphs(graphs), show_augments=True)
+    assert "@mk2" in result
 
 
 # ---------------------------------------------------------------------------

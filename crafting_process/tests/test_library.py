@@ -101,6 +101,31 @@ def test_header_pipe_with_inline_inputs():
     assert result["inputs"] == "3 iron + 1 copper"
 
 
+def test_header_process_name_with_spaces_batch():
+    # Spaces are legal in process names; batch recipe has no duration attribute.
+    result = _parse_process_header("widget | iron smelting:")
+    assert result["process"] == "iron smelting"
+
+
+def test_header_process_name_with_spaces_and_duration():
+    result = _parse_process_header("widget | iron smelting: duration=3.2")
+    assert result["process"] == "iron smelting"
+    assert result["duration"] == pytest.approx(3.2)
+
+
+def test_library_process_name_with_spaces_registered():
+    lib = ProcessLibrary()
+    lib.add_from_text("1 iron_bar | smelt iron:\n6 iron_ore\n")
+    assert any("smelt iron" in key for key in lib.recipes)
+
+
+def test_library_process_name_with_spaces_lookup():
+    lib = ProcessLibrary()
+    lib.add_from_text("1 iron_bar | smelt iron:\n6 iron_ore\n")
+    results = lib.using("smelt iron")
+    assert len(results) == 1
+
+
 def test_header_attribute_with_digit_in_name():
     # Regression: the 0-0 typo fix — attribute names with digits should parse
     result = _parse_process_header("widget | stamping: tier2=advanced")
