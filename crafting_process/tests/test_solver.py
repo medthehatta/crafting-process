@@ -68,12 +68,6 @@ def test_solve_milp_each_process_runs_at_least_once():
     assert all(v >= 1 for v in result["answer"].values())
 
 
-def test_solve_milp_respects_max_repeat():
-    # Zero-leak solution requires P1=3 which exceeds max_repeat=2
-    with pytest.raises(ValueError, match="No solution"):
-        solve_milp(RATIO_2TO3, ["P1", "P2"], max_leak=0, max_repeat=2)
-
-
 def test_solve_milp_raises_on_infeasible():
     with pytest.raises(ValueError, match="No solution"):
         solve_milp(INFEASIBLE, ["A", "B"], max_leak=0)

@@ -4,7 +4,7 @@ from scipy.optimize import LinearConstraint
 from scipy.optimize import Bounds
 
 
-def solve_milp(dense, keys, max_leak=0, max_repeat=180):
+def solve_milp(dense, keys, max_leak=0):
     c = np.ones(len(keys))
     A = np.array(dense)
     b_u = max_leak * np.ones(len(dense))
@@ -12,7 +12,12 @@ def solve_milp(dense, keys, max_leak=0, max_repeat=180):
 
     constraints = LinearConstraint(A, b_l, b_u)
     integrality = np.ones_like(c)
-    bounds = Bounds(lb=np.ones_like(c), ub=max_repeat * np.ones_like(c))
+    # Upper bound: large enough to never artificially constrain a solution.
+    # Scaled from the matrix so recipes with large coefficients (e.g. currency
+    # chains like 10000c = 1g alongside 1877900c prices) don't hit the ceiling.
+    matrix_scale = max(abs(v) for row in dense for v in row) if dense else 1
+    ub = max(10_000, int(matrix_scale) * 10) * np.ones_like(c)
+    bounds = Bounds(lb=np.ones_like(c), ub=ub)
 
     res = milp(
         c=c,
@@ -32,13 +37,10 @@ def solve_milp(dense, keys, max_leak=0, max_repeat=180):
 
 def best_milp_sequence(matrix, keys):
     max_leak = 10000
-    max_repeat = 500
     last = None
 
     try:
-        soln = solve_milp(
-            matrix, keys, max_leak=max_leak, max_repeat=max_repeat
-        )
+        soln = solve_milp(matrix, keys, max_leak=max_leak)
     except ValueError:
         return
     else:
@@ -50,12 +52,7 @@ def best_milp_sequence(matrix, keys):
 
     while True:
         try:
-            soln = solve_milp(
-                matrix,
-                keys,
-                max_leak=max_leak,
-                max_repeat=max_repeat,
-            )
+            soln = solve_milp(matrix, keys, max_leak=max_leak)
         except ValueError:
             return
         else:
