@@ -31,12 +31,15 @@ library.py        DSL parsing, ProcessLibrary, ProcessPredicates
 graph.py          GraphBuilder — process graphs + MILP matrix building
 solver.py         solve_milp(), best_milp_sequence() — scipy MILP wrapper
 orchestration.py  production_graphs(), analyze_graph(), printable_analysis()
-augment.py        Augments, AugmentedProcess
+augment.py        Augments — Process -> Process transform factories
 utils.py          only(), curry re-export
 tests/            pytest suite — function style, no test classes
 ```
 
 `ops.py` was deleted — deprecated API layer superseded by `orchestration.py`.
+
+Demo scripts at repo root: `check_samples.py` (continuous/rate-based, Factorio-style,
+uses `sample_recipes.txt`) and `check_batch.py` (batch, WoW-style, uses `batch_recipes.txt`).
 
 ## Data Model
 
@@ -73,6 +76,11 @@ Process.from_transfer(transfer, **kwargs)
 describe_process(output_names, process=None) -> str
   module-level in process.py; shared by Process.describe() and ProcessLibrary.mkname()
 ```
+
+`copy(**overrides)` accepts any field as a keyword override. Always returns a new
+object — never mutates the original. `annotations` is shallow-merged (`{**self.annotations,
+**overrides.get("annotations", {})}`). Use `copy(applied_augments=...)` after calling an
+augment fn to stamp names onto the result (augment fns themselves don't know their names).
 
 ### GraphBuilder
 
@@ -117,11 +125,14 @@ currently reads it.
 
 ```
 # Two-line (header + inputs):
-some output | process_name: duration=1
+some output | process name: duration=1
 2 some input + 3 another input
 
+# Process names may contain spaces — no underscores required.
+# "smelt iron" and "smelt_iron" are different names; pick one convention per file.
+
 # Inline inputs (= on header line):
-another output | different_process: = another input + 6 input3
+another output | different process: = another input + 6 input3
 
 # Multiple outputs:
 2 iron + 1 slag | smelt: = 3 ore
@@ -137,6 +148,12 @@ widget | stamping: duration=4 | tier=2
 2 iron | smelt: duration=2 [tier=2 | energy=150]
 1 widget | assemble: [assembler=mk2 | tier=2] = 2 iron + 1 copper
 ```
+
+**Parsing order gotcha**: the `[...]` annotation block is extracted from the header
+string *before* the outer `|` split, because `|` inside brackets would otherwise be
+consumed as a segment separator. Inline `@` tokens are stripped from `attributes_raw`
+*after* the `|` split but *before* the `process=name:` substitution regex, so they
+don't bleed into the process name value.
 
 `ProcessPredicates.annotation_matches(key, pred)` — filters library by annotation value;
 `pred` is any callable `value -> bool`. Composes with `and_`/`or_`/`not_` as usual.
@@ -173,6 +190,11 @@ Original (un-augmented) recipe is always added alongside augmented variants.
 
 `lib.with_augment_filter(skip_augments=None, only_augments=None)` — returns a filtered
 library view; thread into `production_graphs` via its `skip_augments`/`only_augments` params.
+
+`only_augments` uses **subset semantics**: a process is kept when
+`applied_augments ⊆ only_augments`. This means originals (`applied_augments=[]`) always
+pass through. `only_augments=[]` gives originals only; `only_augments=["mk3"]` gives
+originals + mk3 variants.
 
 `process_name` in the header sets `proc.process` — used by `skip_processes` in
 `production_graphs`. `ProcessLibrary.mkname()` builds the library key from
@@ -238,10 +260,15 @@ Each yielded dict:
 "transfer"              Ingredients — scaled dangling transfers (open inputs/outputs)
 "inputs"                [(amount, kind)] — raw material requirements; "_" excluded
 "sorted_process_counts" [(count, desc, slug)] — sorted deepest-first by output_depths
+"yield"                 {kind: float} — actual output qty per desired kind (may exceed
+                        requested when mul_outputs causes overproduction)
+"process_augments"      {slug: list[str]} — applied_augments per process slug
 ```
 
-`printable_analysis` subtracts 1 from `total_processes` for display — the caller
-bears responsibility for knowing whether a sentinel is present.
+`printable_analysis(aly, show_augments=False)` subtracts 1 from `total_processes`
+for display. With `show_augments=True`, appends `@name` suffixes to process count
+lines. Always prints a `makes:` line showing actual yield; annotates with
+`(want: N)` when yield differs from what was requested.
 
 ### `batch_milps(graph)` → list of `{leakage, counts}` dicts
 
@@ -265,8 +292,7 @@ Each `counts` entry: `(repeat_count, process.describe(), process_slug)`.
 - **`build_matrix` / `build_batch_matrix`**: nearly identical — unify with `batch=False`
 - **`find_pools_by_kind_and_process_name` / `find_pools_by_process_name_and_kind`**:
   identical methods — remove one
-- **`augment.increase_energy_pct`**: hardcoded to `"kWe"` — FIXME in source
-- **`ProcessLibrary`**: FIXME about not supporting `AugmentedProcess`
+- **`pool_aliases`**: populated by `coalesce_pools` but never read — dead code
 - **Continuous vs batch coexistence**: processes in a graph must all be one mode —
   known limitation, noted as a future goal
 
@@ -274,19 +300,12 @@ Each `counts` entry: `(repeat_count, process.describe(), process_slug)`.
 
 ```
 test_utils.py          4  done
-test_process.py       46  done
-test_library.py       96  done
+test_process.py       44  done
+test_library.py       91  done
 test_solver.py        18  done
 test_graph.py         49  done  (build_matrix and build_batch_matrix both covered)
-test_augment.py       27  done
-test_orchestration.py 90  done
+test_augment.py       18  done
+test_orchestration.py 99  done
 ```
 
-Total: 310 tests, all passing (`uv run pytest`).
-
-### Upcoming test work
-
-- More complex `production_graphs` scenarios: processes producing multiple outputs
-  where the consumer needs several of them, dependency chains with shared
-  intermediates, `max_overlap > 2` behaviour.
-- `test_augment.py` deferred until `ProcessLibrary` supports `AugmentedProcess`.
+Total: 323 tests, all passing (`uv run pytest`).
