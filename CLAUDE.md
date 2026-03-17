@@ -215,6 +215,12 @@ where `actual_leak = max(M @ x_current)`, then tightens to `0.9 * actual_leak` a
 repeats until the solution stops changing. Final answer has `leak=0.0` for any
 perfectly balanced integer solution. Infeasible matrices yield an empty sequence.
 
+`solve_milp` upper-bounds each `x` at `max(10_000, max(|M|) × 10)` so that
+recipes with large coefficients (e.g. currency conversion chains like
+`10000 c | copper_to_gold: = 1 g` combined with `1877900 c` AH prices) are never
+artificially made infeasible. A fixed `max_repeat` cap caused silent infeasibility
+for such chains — do not reintroduce it.
+
 ## Orchestration Flow
 
 ### `production_graphs(recipes, transfer, ...)`
@@ -302,10 +308,10 @@ Each `counts` entry: `(repeat_count, process.describe(), process_slug)`.
 test_utils.py          4  done
 test_process.py       44  done
 test_library.py       91  done
-test_solver.py        18  done
+test_solver.py        17  done
 test_graph.py         49  done  (build_matrix and build_batch_matrix both covered)
 test_augment.py       18  done
 test_orchestration.py 99  done
 ```
 
-Total: 323 tests, all passing (`uv run pytest`).
+Total: 322 tests, all passing (`uv run pytest`).
