@@ -37,6 +37,8 @@ I think we would use that line, yeah, same one as `smelt:` in your example, but 
 
 ## 1. Re-implement augment.py
 
+**DONE**
+
 The current implementation of augment.py sucks.  It introduces a gross wrapper class around Process with some hardcoded methods that are quite ad-hoc.  Using the AugmentedProcess manually is not really ergonomic (I previously just had some standard ones that were universally applied to every process so we didn't need to involve the ProcessLibrary), so they don't really even satisfy their primary design goals.
 
 What we want is to be capable of modeling some standard transformations on processes that yield new processes within the DSL.  Any function Process -> Process could be acceptable as an "augmentation".  We need to be able to attach these augmentations to the ProcessLibrary for use in the DSL in a standard way.  We then need to be able to either manually apply these augmentations to processes in the DSL, or specify that we want to apply them to whole batches of processes.  This will involve some DSL extensions and likely a reimplementation of augment.py.
@@ -226,7 +228,7 @@ Ideally we would be able to do like a lazy `topk` evaluation rather than a brute
 > well (e.g. to traverse pool structure)?
 >
 
-Great point.  We probably do need both.  For example there could be a situation where we might want to evaluate the costs of intermediate products, which would require looking at the graph.
+Great point.  We probably do need both.  For example there could be a situation where we might want to evaluate the costs of intermediate products, which would require looking at the graph.  In fact we should probably just introduce a class for a "solved" result that has all the information we need in a convenient form, it's a lot of stuff to aggregate and having a class to consolidate it in a convenient way will give us leverage.
 
 > **Q3f:** Should cost-sorted output be a new entry point (e.g. `best_k_graphs(graphs,
 > cost_fn, k)` returning a list), or should `analyze_graphs` / `production_graphs` grow an
