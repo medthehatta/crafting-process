@@ -16,10 +16,7 @@ class GraphBuilder:
 
     def __repr__(self):
         node_s = "nodes" if len(self.processes) > 1 else "node"
-        return (
-            f"<{self.__class__.__name__} "
-            f"[{len(self.processes)} {node_s}]>"
-        )
+        return f"<{self.__class__.__name__} " f"[{len(self.processes)} {node_s}]>"
 
     @classmethod
     def from_process(cls, process, name=None):
@@ -51,10 +48,10 @@ class GraphBuilder:
         outputs_by_kind = {}
         inputs_by_kind = {}
 
-        for (process_name, kind) in self.open_outputs:
+        for process_name, kind in self.open_outputs:
             outputs_by_kind[kind] = outputs_by_kind.get(kind, []) + [process_name]
 
-        for (process_name, kind) in other.open_inputs:
+        for process_name, kind in other.open_inputs:
             inputs_by_kind[kind] = inputs_by_kind.get(kind, []) + [process_name]
 
         shared_kinds = set(outputs_by_kind).intersection(inputs_by_kind)
@@ -105,7 +102,8 @@ class GraphBuilder:
             src = self.processes[src_process]
             dest = self.processes[dest_process]
             kind = only(
-                x for x in src.outputs.nonzero_components.keys()
+                x
+                for x in src.outputs.nonzero_components.keys()
                 if x in dest.inputs.nonzero_components.keys()
             )
 
@@ -251,7 +249,8 @@ class GraphBuilder:
             )
         pool["inputs"].append(src_process_name)
         self.open_outputs = [
-            (pname, res) for (pname, res) in self.open_outputs
+            (pname, res)
+            for (pname, res) in self.open_outputs
             if not (pname == src_process_name and res == pool["kind"])
         ]
         return pool
@@ -266,7 +265,8 @@ class GraphBuilder:
             )
         pool["outputs"].append(dest_process_name)
         self.open_inputs = [
-            (pname, res) for (pname, res) in self.open_inputs
+            (pname, res)
+            for (pname, res) in self.open_inputs
             if not (pname == dest_process_name and res == pool["kind"])
         ]
         return pool
@@ -276,21 +276,24 @@ class GraphBuilder:
 
     def find_pools_by_process_name(self, process_name):
         return [
-            pool for pool in self.pools.values()
+            pool
+            for pool in self.pools.values()
             if process_name in pool.get("inputs", [])
             or process_name in pool.get("outputs", [])
         ]
 
     def find_pools_by_kind_and_process_name(self, kind, process_name):
         return [
-            pool for pool in self.find_pools_by_kind(kind)
+            pool
+            for pool in self.find_pools_by_kind(kind)
             if process_name in pool.get("inputs", [])
             or process_name in pool.get("outputs", [])
         ]
 
     def find_pools_by_process_name_and_kind(self, process_name, kind):
         return [
-            pool for pool in self.find_pools_by_kind(kind)
+            pool
+            for pool in self.find_pools_by_kind(kind)
             if process_name in pool.get("inputs", [])
             or process_name in pool.get("outputs", [])
         ]
@@ -309,11 +312,11 @@ class GraphBuilder:
         process_items = list(self.processes.items())
         processes = [p for (p, _) in process_items]
 
-        for (pool_name, pool) in pool_items:
+        for pool_name, pool in pool_items:
             kind = pool["kind"]
             row = []
 
-            for (process_name, process) in process_items:
+            for process_name, process in process_items:
                 if process_name in pool["inputs"]:
                     rate = process.transfer_rate
                     row.append(rate[kind])
@@ -339,11 +342,11 @@ class GraphBuilder:
         process_items = list(self.processes.items())
         processes = [p for (p, _) in process_items]
 
-        for (pool_name, pool) in pool_items:
+        for pool_name, pool in pool_items:
             kind = pool["kind"]
             row = []
 
-            for (process_name, process) in process_items:
+            for process_name, process in process_items:
                 if process_name in pool["inputs"]:
                     volume = process.transfer
                     row.append(volume[kind])
@@ -365,14 +368,14 @@ class GraphBuilder:
         terminal_edges = self.open_outputs
         input_processes = [process_name for (process_name, _) in terminal_edges]
         other = itertools.chain.from_iterable(
-            self._process_depths(inp, depth=0)
-            for inp in input_processes
+            self._process_depths(inp, depth=0) for inp in input_processes
         )
         return dict(other)
 
     def _process_depths(self, process_name, depth=0):
         input_pools = [
-            pool for pool in self.pools.values()
+            pool
+            for pool in self.pools.values()
             if process_name in pool.get("outputs", [])
         ]
         input_processes = list(
@@ -380,15 +383,13 @@ class GraphBuilder:
         )
         other = list(
             itertools.chain.from_iterable(
-                self._process_depths(inp, depth=depth+1)
-                for inp in input_processes
+                self._process_depths(inp, depth=depth + 1) for inp in input_processes
             )
         )
         max_depth = max([depth for (p, depth) in other if p == process_name] + [depth])
-        return (
-            [(process_name, max_depth)]
-            + [(p, d) for (p, d) in other if p != process_name]
-        )
+        return [(process_name, max_depth)] + [
+            (p, d) for (p, d) in other if p != process_name
+        ]
 
     def output_depths(self):
         depths = self.process_depths()
@@ -398,7 +399,7 @@ class GraphBuilder:
         # not being consumed, that output doesn't need to be "ready" for
         # anybody.
         out = {}
-        for (process_name, process) in self.processes.items():
+        for process_name, process in self.processes.items():
             output_desc = process.describe()
             out[output_desc] = max(out.get(output_desc, -1), depths[process_name])
 

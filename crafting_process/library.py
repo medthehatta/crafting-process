@@ -3,7 +3,6 @@ import re
 
 from .utils import curry
 
-from .graph import GraphBuilder
 from .process import describe_process
 from .process import Ingredients
 from .process import Process
@@ -12,9 +11,7 @@ from .augment import Augments
 
 def parse_process(s):
     stripped_lines = (line.strip() for line in s.splitlines())
-    lines = [
-        line for line in stripped_lines if line and not line.startswith("#")
-    ]
+    lines = [line for line in stripped_lines if line and not line.startswith("#")]
 
     if len(lines) == 0:
         raise ValueError(f"No substantive lines in (next line):\n{s}")
@@ -32,7 +29,7 @@ def parse_process(s):
 def _is_augment_line(stripped):
     """Return True if every token on the line starts with '@'."""
     tokens = stripped.split()
-    return bool(tokens) and all(t.startswith('@') for t in tokens)
+    return bool(tokens) and all(t.startswith("@") for t in tokens)
 
 
 def _parse_annotation_block(s):
@@ -42,25 +39,25 @@ def _parse_annotation_block(s):
     (s, {}).  Values are JSON-decoded (int/float/string); bare true/false are
     kept as strings to avoid bool footguns.
     """
-    m = re.search(r'\[([^\]]*)\]', s)
+    m = re.search(r"\[([^\]]*)\]", s)
     if not m:
         return s, {}
 
     interior = m.group(1)
-    cleaned = s[:m.start()] + s[m.end():]
+    cleaned = s[: m.start()] + s[m.end() :]
 
     annotations = {}
-    for pair in re.split(r'\s*\|\s*', interior):
+    for pair in re.split(r"\s*\|\s*", interior):
         pair = pair.strip()
         if not pair:
             continue
-        if '=' not in pair:
+        if "=" not in pair:
             raise ValueError(f"Annotation '{pair}' is not in key=value format")
-        key, _, raw_val = pair.partition('=')
+        key, _, raw_val = pair.partition("=")
         key = key.strip()
         raw_val = raw_val.strip()
         # Reject bare JSON booleans; keep them as strings
-        if raw_val in ('true', 'false', 'null'):
+        if raw_val in ("true", "false", "null"):
             annotations[key] = raw_val
         else:
             try:
@@ -108,15 +105,15 @@ def _parse_process_header(s):
     # legibility only.  We ignore the other segment marks by
     # re-joining the subsequent tokens.
     if len(segments) > 1:
-        (product_raw, attributes_raw) = (segments[0].strip(), " ".join(segments[1:]))
+        product_raw, attributes_raw = (segments[0].strip(), " ".join(segments[1:]))
     else:
-        (product_raw, attributes_raw) = (segments[0].strip(), "")
+        product_raw, attributes_raw = (segments[0].strip(), "")
 
     # Extract inline @augment tokens before any other attribute parsing so they
     # don't bleed into the process name or other key=value pairs.
-    inline_augment_tokens = re.findall(r'@[A-Za-z_][A-Za-z_0-9]*', attributes_raw)
-    attributes_raw = re.sub(r'@[A-Za-z_][A-Za-z_0-9]*\s*', '', attributes_raw).strip()
-    inline_augments = [t.lstrip('@') for t in inline_augment_tokens]
+    inline_augment_tokens = re.findall(r"@[A-Za-z_][A-Za-z_0-9]*", attributes_raw)
+    attributes_raw = re.sub(r"@[A-Za-z_][A-Za-z_0-9]*\s*", "", attributes_raw).strip()
+    inline_augments = [t.lstrip("@") for t in inline_augment_tokens]
 
     # Parse the attributes.
     #
@@ -295,7 +292,7 @@ class GraphPredicates(Predicates):
 def specs_from_lines(lines):
     found = False
     buf = ""
-    augment_block = []      # list[list[str]] — one inner list per @-line
+    augment_block = []  # list[list[str]] — one inner list per @-line
     in_augment_section = True  # True while collecting consecutive @-lines
 
     for line in lines:
@@ -314,7 +311,7 @@ def specs_from_lines(lines):
                 # New @-block after recipes: reset
                 augment_block = []
                 in_augment_section = True
-            augment_block.append([t.lstrip('@') for t in stripped.split()])
+            augment_block.append([t.lstrip("@") for t in stripped.split()])
 
         else:
             in_augment_section = False
@@ -329,11 +326,11 @@ def specs_from_lines(lines):
 
 def process_from_spec_dict(spec):
     inputs = (
-        Ingredients.parse(spec["inputs"]) if spec.get("inputs")
-        else Ingredients.zero()
+        Ingredients.parse(spec["inputs"]) if spec.get("inputs") else Ingredients.zero()
     )
     outputs = (
-        Ingredients.parse(spec["outputs"]) if spec.get("outputs")
+        Ingredients.parse(spec["outputs"])
+        if spec.get("outputs")
         else Ingredients.zero()
     )
 
@@ -378,12 +375,11 @@ def augment_specs_from_lines(lines):
             record_in_progress = {"name": name}
 
         elif "name" in record_in_progress:
-            (func_name, rest) = re.split(r"\s+", line.strip(), 1)
+            func_name, rest = re.split(r"\s+", line.strip(), 1)
             arg_parser = arg_parsers.get(func_name)
-            record_in_progress["augments"] = (
-                record_in_progress.get("augments", [])
-                + [(func_name, arg_parser(rest))]
-            )
+            record_in_progress["augments"] = record_in_progress.get("augments", []) + [
+                (func_name, arg_parser(rest))
+            ]
 
     return records
 
@@ -526,4 +522,3 @@ class ProcessLibrary:
         result = ProcessLibrary(recipes=merged)
         result._augments = {**self._augments, **other._augments}
         return result
-

@@ -43,9 +43,11 @@ lib.register_augment(
 
 lib.add_from_text(RECIPE_FILE.read_text())
 
-print(f"Library loaded: {len(lib.recipes)} entries "
-      f"({sum(1 for p in lib.recipes.values() if not p.applied_augments)} base, "
-      f"{sum(1 for p in lib.recipes.values() if p.applied_augments)} augmented)")
+print(
+    f"Library loaded: {len(lib.recipes)} entries "
+    f"({sum(1 for p in lib.recipes.values() if not p.applied_augments)} base, "
+    f"{sum(1 for p in lib.recipes.values() if p.applied_augments)} augmented)"
+)
 
 
 # ----------------------------------------------------------------
@@ -76,7 +78,11 @@ def run_analysis(label, transfer, num_show=4, show_augments=True, **pg_kwargs):
         print("  (no solution found)\n")
         return
     best = top_graphs(graphs, n=num_show)
-    print(printable_analysis(analyze_graphs(best, num_keep=2), show_augments=show_augments))
+    print(
+        printable_analysis(
+            analyze_graphs(best, num_keep=2), show_augments=show_augments
+        )
+    )
 
 
 # ----------------------------------------------------------------

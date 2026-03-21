@@ -25,20 +25,26 @@ lib = cp.ProcessLibrary(
     path=RECIPE_FILE,
     augments={
         "assembler_mk1": Augments.add_input_rate(cp.Ingredients.parse("50 kWe")),
-        "assembler_mk2": Augments.composed([
-            Augments.mul_speed(1.5),
-            Augments.add_input_rate(cp.Ingredients.parse("150 kWe")),
-        ]),
-        "assembler_mk3": Augments.composed([
-            Augments.mul_speed(2.5),
-            Augments.add_input_rate(cp.Ingredients.parse("375 kWe")),
-        ]),
+        "assembler_mk2": Augments.composed(
+            [
+                Augments.mul_speed(1.5),
+                Augments.add_input_rate(cp.Ingredients.parse("150 kWe")),
+            ]
+        ),
+        "assembler_mk3": Augments.composed(
+            [
+                Augments.mul_speed(2.5),
+                Augments.add_input_rate(cp.Ingredients.parse("375 kWe")),
+            ]
+        ),
     },
 )
 
-print(f"Library loaded: {len(lib.recipes)} entries "
-      f"({sum(1 for p in lib.recipes.values() if not p.applied_augments)} base, "
-      f"{sum(1 for p in lib.recipes.values() if p.applied_augments)} augmented)")
+print(
+    f"Library loaded: {len(lib.recipes)} entries "
+    f"({sum(1 for p in lib.recipes.values() if not p.applied_augments)} base, "
+    f"{sum(1 for p in lib.recipes.values() if p.applied_augments)} augmented)"
+)
 
 
 # ----------------------------------------------------------------
@@ -53,7 +59,9 @@ print(f"{'#'*66}")
 print(f"\n{DIVIDER}")
 print("  1 computer  [assembler_mk3 only]")
 print(DIVIDER)
-results = cp.plan(lib, "1 computer", n=3, only_augments=["assembler_mk3"], max_overlap=1)
+results = cp.plan(
+    lib, "1 computer", n=3, only_augments=["assembler_mk3"], max_overlap=1
+)
 print(cp.printable_analysis(iter(results), show_augments=True))
 
 # 1b. 2 battery, mk2 assemblers — medium chain; battery_assembly produces 2
@@ -69,7 +77,9 @@ print(f"\n{DIVIDER}")
 print("  1 rocket_part  [assembler_mk3 only, petroleum_gas is raw]")
 print(DIVIDER)
 results = cp.plan(
-    lib, "1 rocket_part", n=3,
+    lib,
+    "1 rocket_part",
+    n=3,
     only_augments=["assembler_mk3"],
     stop_kinds=["petroleum_gas"],
     max_overlap=1,
@@ -87,7 +97,9 @@ print(f"{'#'*66}")
 
 # 2a. Show raw material requirements for the best computer plan.
 print("\n--- Best plan for 1 computer (mk3): raw inputs ---")
-results = cp.plan(lib, "1 computer", n=1, only_augments=["assembler_mk3"], max_overlap=1)
+results = cp.plan(
+    lib, "1 computer", n=1, only_augments=["assembler_mk3"], max_overlap=1
+)
 best = results[0]
 print(f"  Leak: {best.leak}  |  Processes: {best.total_processes - 1}")
 for amt, kind in best.inputs:
@@ -118,7 +130,9 @@ for pc in best.process_counts:
 #     Demonstrates using PlanResult.inputs for custom ranking logic.
 print("\n--- rocket_part plans ranked by total raw inputs (mk3, petroleum_gas raw) ---")
 results = cp.plan(
-    lib, "1 rocket_part", n=5,
+    lib,
+    "1 rocket_part",
+    n=5,
     only_augments=["assembler_mk3"],
     stop_kinds=["petroleum_gas"],
     max_overlap=1,
@@ -157,12 +171,15 @@ for proc in lib.recipes.values():
     all_outputs |= set(proc.outputs.nonzero_components)
 intermediates = (all_inputs & all_outputs) - {"_"}
 
-print(f"\n--- Recipes producing intermediates (not finals): {len(intermediates)} kinds ---")
+print(
+    f"\n--- Recipes producing intermediates (not finals): {len(intermediates)} kinds ---"
+)
 pred = cp.Pred(lambda p: bool(set(p.outputs.nonzero_components) & intermediates))
 intermediate_lib = lib.filtered(pred)
 # Count only base (non-augmented) recipes for clarity
 base_intermediates = [
-    (name, proc) for name, proc in intermediate_lib.recipes.items()
+    (name, proc)
+    for name, proc in intermediate_lib.recipes.items()
     if not proc.applied_augments
 ]
 print(f"  {len(base_intermediates)} base recipes produce intermediates")

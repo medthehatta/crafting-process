@@ -2,7 +2,6 @@ import pytest
 
 from crafting_process.solver import solve_milp, best_milp_sequence
 
-
 # ---------------------------------------------------------------------------
 # Notation
 # ---------------------------------------------------------------------------
@@ -23,14 +22,15 @@ from crafting_process.solver import solve_milp, best_milp_sequence
 
 
 BALANCED_1TO1 = [[1, -1]]
-RATIO_2TO3    = [[2, -3]]
-CHAIN         = [[2, -3, 0], [0, 1, -1]]
-INFEASIBLE    = [[-1, -1]]
+RATIO_2TO3 = [[2, -3]]
+CHAIN = [[2, -3, 0], [0, 1, -1]]
+INFEASIBLE = [[-1, -1]]
 
 
 # ---------------------------------------------------------------------------
 # solve_milp
 # ---------------------------------------------------------------------------
+
 
 def test_solve_milp_balanced_ratio():
     result = solve_milp(BALANCED_1TO1, ["A", "B"], max_leak=0)
@@ -83,6 +83,7 @@ def test_solve_milp_raises_on_infeasible_even_with_high_leak():
 # best_milp_sequence
 # ---------------------------------------------------------------------------
 
+
 def test_best_milp_sequence_yields_at_least_one_result():
     results = list(best_milp_sequence(RATIO_2TO3, ["P1", "P2"]))
     assert len(results) >= 1
@@ -96,7 +97,7 @@ def test_best_milp_sequence_terminates():
 
 def test_best_milp_sequence_final_answer_is_zero_leak():
     results = list(best_milp_sequence(RATIO_2TO3, ["P1", "P2"]))
-    (final_leak, final_answer) = results[-1]
+    final_leak, final_answer = results[-1]
     assert final_answer == {"P1": 3, "P2": 2}
     assert final_leak == pytest.approx(0.0)
 
@@ -108,7 +109,7 @@ def test_best_milp_sequence_leak_is_non_increasing():
 
 
 def test_best_milp_sequence_all_results_are_tuples_of_leak_and_dict():
-    for (leak, answer) in best_milp_sequence(RATIO_2TO3, ["P1", "P2"]):
+    for leak, answer in best_milp_sequence(RATIO_2TO3, ["P1", "P2"]):
         assert isinstance(leak, float)
         assert isinstance(answer, dict)
 
@@ -122,16 +123,17 @@ def test_best_milp_sequence_balanced_yields_one_result():
     # 1:1 is already optimal on first solve; sequence has exactly one entry
     results = list(best_milp_sequence(BALANCED_1TO1, ["A", "B"]))
     assert len(results) == 1
-    (leak, answer) = results[0]
+    leak, answer = results[0]
     assert answer == {"A": 1, "B": 1}
     assert leak == pytest.approx(0.0)
 
 
 def test_best_milp_sequence_leak_matches_solution():
     import numpy as np
+
     # The yielded leak must equal the actual max pool imbalance for that solution,
     # not some derived constraint value
     matrix = np.array(RATIO_2TO3, dtype=float)
-    for (leak, answer) in best_milp_sequence(RATIO_2TO3, ["P1", "P2"]):
+    for leak, answer in best_milp_sequence(RATIO_2TO3, ["P1", "P2"]):
         x = np.array([answer["P1"], answer["P2"]])
         assert leak == pytest.approx(float(max(matrix @ x)))

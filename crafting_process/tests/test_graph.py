@@ -4,10 +4,10 @@ import pytest
 from crafting_process.graph import GraphBuilder
 from crafting_process.process import Ingredients, Process
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_ore_smelter():
     """3 ore -> 2 iron  (no duration — batch only)"""
@@ -82,6 +82,7 @@ def two_process_graph():
 # __repr__
 # ---------------------------------------------------------------------------
 
+
 def test_repr_zero_processes():
     # pluralization uses > 1, so 0 counts as singular (existing behaviour)
     g = GraphBuilder()
@@ -101,6 +102,7 @@ def test_repr_two_processes():
 # ---------------------------------------------------------------------------
 # add_process / from_process
 # ---------------------------------------------------------------------------
+
 
 def test_add_process_registers_process():
     g = GraphBuilder()
@@ -148,6 +150,7 @@ def test_add_process_returns_metadata():
 # ---------------------------------------------------------------------------
 # output_into
 # ---------------------------------------------------------------------------
+
 
 def test_output_into_creates_pool_for_shared_kind():
     g, _, _ = two_process_graph()
@@ -212,6 +215,7 @@ def test_output_into_contains_all_processes():
 # unify
 # ---------------------------------------------------------------------------
 
+
 def test_unify_merges_processes():
     g1 = GraphBuilder.from_process(make_ore_smelter(), name="s")
     g2 = GraphBuilder.from_process(make_widget_press(), name="p")
@@ -254,6 +258,7 @@ def test_unify_mutates_self():
 # union (classmethod)
 # ---------------------------------------------------------------------------
 
+
 def test_union_returns_new_graph():
     g1 = GraphBuilder.from_process(make_ore_smelter(), name="s")
     g2 = GraphBuilder.from_process(make_widget_press(), name="p")
@@ -282,10 +287,11 @@ def test_union_contains_all_processes():
 # coalesce_pools
 # ---------------------------------------------------------------------------
 
+
 def test_coalesce_pools_merges_two_pools_of_same_kind():
     g = GraphBuilder()
-    pool1 = g.add_pool("iron", name="pool1")
-    pool2 = g.add_pool("iron", name="pool2")
+    g.add_pool("iron", name="pool1")
+    g.add_pool("iron", name="pool2")
     merged = g.coalesce_pools("pool1", "pool2")
     assert merged["kind"] == "iron"
     assert "pool1" not in g.pools
@@ -335,13 +341,16 @@ def test_coalesce_pools_noop_on_same_pool():
 # build_batch_matrix — most important correctness test
 # ---------------------------------------------------------------------------
 
+
 def test_build_batch_matrix_producer_is_positive():
     g, smelter, _ = two_process_graph()
     result = g.build_batch_matrix()
     matrix = result["matrix"]
     processes = result["processes"]
     smelter_col = processes.index(smelter)
-    iron_row = [i for i, p in enumerate(result["pools"]) if g.pools[p]["kind"] == "iron"][0]
+    iron_row = [
+        i for i, p in enumerate(result["pools"]) if g.pools[p]["kind"] == "iron"
+    ][0]
     assert matrix[iron_row][smelter_col] > 0
 
 
@@ -351,7 +360,9 @@ def test_build_batch_matrix_consumer_is_negative():
     matrix = result["matrix"]
     processes = result["processes"]
     press_col = processes.index(press)
-    iron_row = [i for i, p in enumerate(result["pools"]) if g.pools[p]["kind"] == "iron"][0]
+    iron_row = [
+        i for i, p in enumerate(result["pools"]) if g.pools[p]["kind"] == "iron"
+    ][0]
     assert matrix[iron_row][press_col] < 0
 
 
@@ -376,8 +387,8 @@ def test_build_batch_matrix_unrelated_process_is_zero():
     g, smelter, press = two_process_graph()
     packager = make_widget_packager()
     # Connect press -> widget pool -> packager
-    g_pack = GraphBuilder.from_process(packager, name="packager")
-    g2 = GraphBuilder.from_process(g.processes[press], name=press)
+    GraphBuilder.from_process(packager, name="packager")
+    GraphBuilder.from_process(g.processes[press], name=press)
     # Build a fresh 3-process graph
     g3 = GraphBuilder()
     g3.add_process(make_ore_smelter(), name="smelter2")
@@ -418,6 +429,7 @@ def test_build_batch_matrix_keys():
 # process_depths / output_depths
 # ---------------------------------------------------------------------------
 
+
 def test_process_depths_terminal_process_is_zero():
     # In a two-process chain, press produces the final open_output (widget)
     g, smelter, press = two_process_graph()
@@ -457,13 +469,16 @@ def test_output_depths_keys_are_process_descriptions():
 # build_matrix (continuous / rate-based) — analogous to build_batch_matrix
 # ---------------------------------------------------------------------------
 
+
 def test_build_matrix_producer_is_positive():
     g, smelter, _ = two_process_graph_timed()
     result = g.build_matrix()
     matrix = result["matrix"]
     processes = result["processes"]
     smelter_col = processes.index(smelter)
-    iron_row = [i for i, p in enumerate(result["pools"]) if g.pools[p]["kind"] == "iron"][0]
+    iron_row = [
+        i for i, p in enumerate(result["pools"]) if g.pools[p]["kind"] == "iron"
+    ][0]
     assert matrix[iron_row][smelter_col] > 0
 
 
@@ -473,7 +488,9 @@ def test_build_matrix_consumer_is_negative():
     matrix = result["matrix"]
     processes = result["processes"]
     press_col = processes.index(press)
-    iron_row = [i for i, p in enumerate(result["pools"]) if g.pools[p]["kind"] == "iron"][0]
+    iron_row = [
+        i for i, p in enumerate(result["pools"]) if g.pools[p]["kind"] == "iron"
+    ][0]
     assert matrix[iron_row][press_col] < 0
 
 

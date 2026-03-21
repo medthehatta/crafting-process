@@ -8,7 +8,6 @@ from cytoolz import interleave
 
 from .graph import GraphBuilder
 from .process import Process, Ingredients
-from .library import ProcessLibrary
 from .solver import best_milp_sequence
 from .utils import only as _only
 
@@ -75,16 +74,13 @@ def analyze_graph(graph, num_keep=4):
         dangling = graph.open_outputs + graph.open_inputs
         transfer = Ingredients.sum(
             # FIXME: This is batch specific
-            count_by_process[name] *
-            graph.processes[name].transfer_quantity(True).project(kind)
+            count_by_process[name]
+            * graph.processes[name].transfer_quantity(True).project(kind)
             for (name, kind) in dangling
         )
 
         inputs = sorted(
-            [
-                (-amt, kind) for (kind, amt, _) in transfer.triples()
-                if kind != "_"
-            ],
+            [(-amt, kind) for (kind, amt, _) in transfer.triples() if kind != "_"],
             reverse=True,
         )
 
@@ -107,8 +103,7 @@ def analyze_graph(graph, num_keep=4):
         }
 
         process_augments = {
-            name: proc.applied_augments
-            for (name, proc) in graph.processes.items()
+            name: proc.applied_augments for (name, proc) in graph.processes.items()
         }
 
         yield PlanResult(
@@ -152,10 +147,7 @@ def input_combinations(input_kinds, kind_providers, max_overlap=2):
     # dest: abcde
     # inputs: abx cde a b c d e
     providing = {
-        kind: [
-            i for (i, provider) in enumerate(kind_providers)
-            if kind in provider
-        ]
+        kind: [i for (i, provider) in enumerate(kind_providers) if kind in provider]
         for kind in input_kinds
     }
 
@@ -172,10 +164,10 @@ def input_combinations(input_kinds, kind_providers, max_overlap=2):
     yield from unique(
         itertools.chain.from_iterable(
             (
-                _flatten_tup_of_tups(prod) for prod in
-                itertools.product(*[_c(kind, i) for kind in providing])
+                _flatten_tup_of_tups(prod)
+                for prod in itertools.product(*[_c(kind, i) for kind in providing])
             )
-            for i in range(1, min(max_overlap, len(providing))+1)
+            for i in range(1, min(max_overlap, len(providing)) + 1)
         )
     )
 
@@ -218,17 +210,16 @@ def _production_graphs(
     visited = visited if visited is not None else set()
 
     desired_kinds = set(
-        kind for (name, kind) in consuming_graph.open_inputs
-        if kind not in stop_kinds
+        kind for (name, kind) in consuming_graph.open_inputs if kind not in stop_kinds
     )
 
     input_recipes = []
     recursable_kinds = []
     for kind in desired_kinds:
         producers = [
-            (name, proc) for (name, proc) in recipes.producing(kind)
-            if proc.process not in skip_processes
-            and name not in visited
+            (name, proc)
+            for (name, proc) in recipes.producing(kind)
+            if proc.process not in skip_processes and name not in visited
         ]
         if producers:
             input_recipes.extend(producers)
@@ -251,8 +242,7 @@ def _production_graphs(
 
     indexed = dict(enumerate(input_recipes))
     kinds_produced = [
-        tuple(process.outputs.nonzero_components)
-        for (_, process) in input_recipes
+        tuple(process.outputs.nonzero_components) for (_, process) in input_recipes
     ]
     combos = input_combinations(
         recursable_kinds,
@@ -284,14 +274,14 @@ def printable_analysis(aly, show_augments=False):
     first = next(iter(aly))
     desired = first.desired
     w = len(str(desired))
-    out_lines.append("#"*(10 + w))
+    out_lines.append("#" * (10 + w))
     out_lines.append(f"#    {desired}    #")
-    out_lines.append("#"*(10 + w))
+    out_lines.append("#" * (10 + w))
     out_lines.append("")
 
-    for (i, a) in enumerate(itertools.chain([first], aly), start=1):
+    for i, a in enumerate(itertools.chain([first], aly), start=1):
         tot = a.total_processes - 1
-        tot_s = f"1 process" if tot == 1 else f"{tot} processes"
+        tot_s = "1 process" if tot == 1 else f"{tot} processes"
         out_lines.append(f"{i}) {tot_s}, {a.leak} leak")
 
         if a.output_quantities:
@@ -303,7 +293,9 @@ def printable_analysis(aly, show_augments=False):
                 yield_parts.append(f"{amt_str} {kind}")
                 wanted = a.desired[kind]
                 if actual != wanted:
-                    w_str = str(int(wanted)) if int(wanted) == wanted else f"{wanted:.2f}"
+                    w_str = (
+                        str(int(wanted)) if int(wanted) == wanted else f"{wanted:.2f}"
+                    )
                     want_parts.append(f"{w_str} {kind}")
             makes_line = f"   makes: {' + '.join(yield_parts)}"
             if want_parts:
@@ -312,7 +304,7 @@ def printable_analysis(aly, show_augments=False):
 
         out_lines.append("")
 
-        for (amt, inp) in a.inputs:
+        for amt, inp in a.inputs:
             if int(amt) == amt:
                 amt_str = str(ceil(amt))
             else:
