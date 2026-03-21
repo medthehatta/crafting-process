@@ -1,7 +1,7 @@
 import json
 import re
 
-from .utils import curry
+from cytoolz import curry
 
 from .process import describe_process
 from .process import Ingredients
