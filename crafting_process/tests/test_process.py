@@ -2,12 +2,14 @@ import pytest
 
 from crafting_process.process import describe_process, Ingredients, Process
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def make_process(outputs="2 widget", inputs="3 iron + 1 copper", duration=4.0, process="stamping"):
+
+def make_process(
+    outputs="2 widget", inputs="3 iron + 1 copper", duration=4.0, process="stamping"
+):
     return Process(
         outputs=Ingredients.parse(outputs),
         inputs=Ingredients.parse(inputs),
@@ -20,12 +22,16 @@ def make_process(outputs="2 widget", inputs="3 iron + 1 copper", duration=4.0, p
 # describe_process
 # ---------------------------------------------------------------------------
 
+
 def test_describe_process_with_process_name():
     assert describe_process(["widget"], "stamping") == "widget via stamping"
 
 
 def test_describe_process_multiple_outputs():
-    assert describe_process(["widget", "scrap"], "stamping") == "widget + scrap via stamping"
+    assert (
+        describe_process(["widget", "scrap"], "stamping")
+        == "widget + scrap via stamping"
+    )
 
 
 def test_describe_process_no_process_name():
@@ -39,6 +45,7 @@ def test_describe_process_no_process_name_explicit_none():
 # ---------------------------------------------------------------------------
 # Ingredients
 # ---------------------------------------------------------------------------
+
 
 def test_ingredients_parse_single():
     ing = Ingredients.parse("3 iron")
@@ -96,6 +103,7 @@ def test_ingredients_tabs_treated_as_spaces():
 # Process construction
 # ---------------------------------------------------------------------------
 
+
 def test_process_stores_outputs_and_inputs():
     p = make_process()
     assert p.outputs["widget"] == 2
@@ -122,6 +130,7 @@ def test_process_name_stored():
 # Process.transfer
 # ---------------------------------------------------------------------------
 
+
 def test_transfer_is_outputs_minus_inputs():
     p = make_process(outputs="2 widget", inputs="3 iron", duration=1.0, process="x")
     t = p.transfer
@@ -132,6 +141,7 @@ def test_transfer_is_outputs_minus_inputs():
 # ---------------------------------------------------------------------------
 # Process.transfer_rate
 # ---------------------------------------------------------------------------
+
 
 def test_transfer_rate_divides_by_duration():
     p = make_process(outputs="4 widget", inputs="2 iron", duration=2.0, process="x")
@@ -150,6 +160,7 @@ def test_transfer_rate_raises_without_duration():
 # Process.transfer_quantity
 # ---------------------------------------------------------------------------
 
+
 def test_transfer_quantity_batch_true_returns_transfer():
     p = make_process(outputs="4 widget", inputs="2 iron", duration=2.0, process="x")
     q = p.transfer_quantity(batch=True)
@@ -167,6 +178,7 @@ def test_transfer_quantity_batch_false_returns_rate():
 # Process.describe
 # ---------------------------------------------------------------------------
 
+
 def test_describe_uses_outputs_and_process_name():
     p = make_process(outputs="2 widget", process="stamping")
     assert p.describe() == "widget via stamping"
@@ -181,6 +193,7 @@ def test_describe_no_process_name():
 # Process.from_transfer
 # ---------------------------------------------------------------------------
 
+
 def test_from_transfer_splits_positive_and_negative():
     transfer = Ingredients.parse("2 widget") - Ingredients.parse("3 iron")
     p = Process.from_transfer(transfer)
@@ -191,6 +204,7 @@ def test_from_transfer_splits_positive_and_negative():
 # ---------------------------------------------------------------------------
 # Process.copy
 # ---------------------------------------------------------------------------
+
 
 def test_copy_produces_equal_process():
     p = make_process()
@@ -212,6 +226,7 @@ def test_copy_with_new_name():
 # Process.__repr__
 # ---------------------------------------------------------------------------
 
+
 def test_repr_includes_process_name_and_duration():
     p = make_process(process="stamping", duration=4.0)
     r = repr(p)
@@ -228,13 +243,16 @@ def test_repr_no_process_name_uses_fallback():
 # Process.annotations
 # ---------------------------------------------------------------------------
 
+
 def test_annotations_default_empty():
     p = Process(outputs=Ingredients.parse("1 widget"))
     assert p.annotations == {}
 
 
 def test_annotations_stored():
-    p = Process(outputs=Ingredients.parse("1 widget"), annotations={"tier": 2, "energy": 150.0})
+    p = Process(
+        outputs=Ingredients.parse("1 widget"), annotations={"tier": 2, "energy": 150.0}
+    )
     assert p.annotations["tier"] == 2
     assert p.annotations["energy"] == 150.0
 
@@ -267,13 +285,16 @@ def test_annotations_from_transfer():
 # Process.applied_augments
 # ---------------------------------------------------------------------------
 
+
 def test_applied_augments_default_empty():
     p = Process(outputs=Ingredients.parse("1 widget"))
     assert p.applied_augments == []
 
 
 def test_applied_augments_stored():
-    p = Process(outputs=Ingredients.parse("1 widget"), applied_augments=["mk2", "speed"])
+    p = Process(
+        outputs=Ingredients.parse("1 widget"), applied_augments=["mk2", "speed"]
+    )
     assert p.applied_augments == ["mk2", "speed"]
 
 
@@ -299,6 +320,7 @@ def test_applied_augments_in_to_dict():
 # Process.copy with field overrides
 # ---------------------------------------------------------------------------
 
+
 def test_copy_override_duration():
     p = make_process(duration=4.0)
     c = p.copy(duration=2.0)
@@ -309,8 +331,11 @@ def test_copy_override_duration():
 def test_copy_override_preserves_annotations():
     p = make_process(duration=4.0)
     p2 = Process(
-        outputs=p.outputs, inputs=p.inputs, duration=p.duration,
-        process=p.process, annotations={"tier": 2},
+        outputs=p.outputs,
+        inputs=p.inputs,
+        duration=p.duration,
+        process=p.process,
+        annotations={"tier": 2},
     )
     c = p2.copy(duration=1.0)
     assert c.annotations == {"tier": 2}

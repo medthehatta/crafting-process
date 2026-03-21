@@ -11,10 +11,10 @@ from crafting_process.library import (
 )
 from crafting_process.process import Ingredients, Process
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def library():
@@ -38,6 +38,7 @@ def library():
 # ---------------------------------------------------------------------------
 # _parse_process_header — DSL syntax variants
 # ---------------------------------------------------------------------------
+
 
 def test_header_outputs_only():
     result = _parse_process_header("widget")
@@ -146,6 +147,7 @@ def test_header_multiword_product_whitespace_stripped():
 # parse_process — 1-line, 2-line, and error cases
 # ---------------------------------------------------------------------------
 
+
 def test_parse_process_single_line():
     result = parse_process("widget = 3 iron")
     assert result["outputs"] == "widget"
@@ -178,6 +180,7 @@ def test_parse_process_raises_on_too_many_lines():
 # ---------------------------------------------------------------------------
 # specs_from_lines
 # ---------------------------------------------------------------------------
+
 
 def test_specs_from_lines_separates_on_blank_line():
     lines = [
@@ -224,8 +227,14 @@ def test_specs_from_lines_no_trailing_blank_required():
 # process_from_spec_dict
 # ---------------------------------------------------------------------------
 
+
 def test_process_from_spec_dict_basic():
-    spec = {"outputs": "2 widget", "inputs": "3 iron", "duration": 4.0, "process": "stamping"}
+    spec = {
+        "outputs": "2 widget",
+        "inputs": "3 iron",
+        "duration": 4.0,
+        "process": "stamping",
+    }
     p = process_from_spec_dict(spec)
     assert p.outputs["widget"] == 2
     assert p.inputs["iron"] == 3
@@ -248,6 +257,7 @@ def test_process_from_spec_dict_no_outputs():
 # ---------------------------------------------------------------------------
 # parse_processes — end-to-end
 # ---------------------------------------------------------------------------
+
 
 def test_parse_processes_returns_list_of_processes():
     lines = [
@@ -274,6 +284,7 @@ def test_parse_processes_preserves_attributes():
 # ---------------------------------------------------------------------------
 # Whitespace tolerance — end-to-end
 # ---------------------------------------------------------------------------
+
 
 def test_extra_spaces_in_output_name_normalized():
     lines = ["iron  gear | stamping: duration=4", "3  iron"]
@@ -305,7 +316,7 @@ def test_ingredient_used_with_inconsistent_spacing_is_unified():
         "gear | machining: duration=2",
         "2 iron ore",
     ]
-    (stamping, machining) = parse_processes(lines)
+    stamping, machining = parse_processes(lines)
     # Both should reference "iron ore" (single space), allowing arithmetic
     combined = stamping.inputs + machining.inputs
     assert combined["iron ore"] == 5
@@ -314,6 +325,7 @@ def test_ingredient_used_with_inconsistent_spacing_is_unified():
 # ---------------------------------------------------------------------------
 # ProcessLibrary — naming and disambiguation
 # ---------------------------------------------------------------------------
+
 
 def test_library_add_from_text_stores_recipes(library):
     assert len(library.recipes) == 4
@@ -343,6 +355,7 @@ def test_mkname_disambiguates_sequentially():
 # ---------------------------------------------------------------------------
 # ProcessLibrary — search methods
 # ---------------------------------------------------------------------------
+
 
 def test_producing_returns_matching_recipes(library):
     results = library.producing("widget")
@@ -388,6 +401,7 @@ def test_filter_with_custom_predicate(library):
 # ---------------------------------------------------------------------------
 # ProcessPredicates
 # ---------------------------------------------------------------------------
+
 
 def make_process(outputs, inputs="", process=None, annotations=None):
     return Process(
@@ -455,19 +469,23 @@ def test_not_combinator():
 
 
 def test_any_combinator():
-    pred = ProcessPredicates.any_([
-        ProcessPredicates.outputs_part("widget"),
-        ProcessPredicates.outputs_part("gear"),
-    ])
+    pred = ProcessPredicates.any_(
+        [
+            ProcessPredicates.outputs_part("widget"),
+            ProcessPredicates.outputs_part("gear"),
+        ]
+    )
     assert pred(make_process("1 widget")) is True
     assert pred(make_process("1 scrap")) is False
 
 
 def test_all_combinator():
-    pred = ProcessPredicates.all_([
-        ProcessPredicates.outputs_part("widget"),
-        ProcessPredicates.requires_part("iron"),
-    ])
+    pred = ProcessPredicates.all_(
+        [
+            ProcessPredicates.outputs_part("widget"),
+            ProcessPredicates.requires_part("iron"),
+        ]
+    )
     assert pred(make_process("1 widget", inputs="3 iron")) is True
     assert pred(make_process("1 widget", inputs="3 copper")) is False
 
@@ -482,6 +500,7 @@ def test_outputs_any_of():
 # ---------------------------------------------------------------------------
 # _parse_process_header — annotation block parsing
 # ---------------------------------------------------------------------------
+
 
 def test_header_annotation_single():
     result = _parse_process_header("2 iron | smelt: [tier=2]")
@@ -534,6 +553,7 @@ def test_header_annotation_outputs_unaffected():
 # process_from_spec_dict — annotations routed correctly
 # ---------------------------------------------------------------------------
 
+
 def test_spec_dict_annotations_on_process():
     spec = {"outputs": "1 widget", "inputs": "2 iron", "annotations": {"tier": 2}}
     p = process_from_spec_dict(spec)
@@ -549,6 +569,7 @@ def test_spec_dict_no_annotations_key_defaults_empty():
 # ---------------------------------------------------------------------------
 # ProcessPredicates.annotation_matches
 # ---------------------------------------------------------------------------
+
 
 def test_annotation_matches_eq():
     p = make_process("1 widget", annotations={"tier": 2})
@@ -626,8 +647,10 @@ def test_lib_filter_annotation_and_output():
 # register_augment
 # ---------------------------------------------------------------------------
 
+
 def test_register_augment_stored():
     from crafting_process.augment import Augments
+
     lib = ProcessLibrary()
     fn = Augments.mul_speed(2.0)
     lib.register_augment("fast", fn)
@@ -639,9 +662,11 @@ def test_register_augment_stored():
 # @-block augment syntax
 # ---------------------------------------------------------------------------
 
+
 def _aug_lib():
     """Library with a registered augment for use in augment tests."""
     from crafting_process.augment import Augments
+
     lib = ProcessLibrary()
     lib.register_augment("mk2", Augments.mul_speed(2.0))
     lib.register_augment("mk3", Augments.mul_speed(3.0))
@@ -674,7 +699,7 @@ def test_block_augment_creates_augmented_entry():
     assert len(augmented) == 1
     name, proc = augmented[0]
     assert "@mk2" in name
-    assert proc.duration == pytest.approx(2.0)   # mk2 = mul_speed(2) → half duration
+    assert proc.duration == pytest.approx(2.0)  # mk2 = mul_speed(2) → half duration
 
 
 def test_block_augment_multiple_lines_yields_one_variant_each():
@@ -703,8 +728,8 @@ def test_block_augment_multi_token_line_composed():
     assert len(augmented) == 1
     name, proc = augmented[0]
     assert "@mk2" in name and "@prod" in name
-    assert proc.duration == pytest.approx(2.0)          # mk2: duration halved
-    assert proc.outputs["iron"] == pytest.approx(2.2)   # prod: outputs * 1.1
+    assert proc.duration == pytest.approx(2.0)  # mk2: duration halved
+    assert proc.outputs["iron"] == pytest.approx(2.2)  # prod: outputs * 1.1
 
 
 def test_block_augment_applied_augments_set():
@@ -764,6 +789,7 @@ def test_block_augment_applies_to_multiple_recipes():
 # Inline @-augment syntax
 # ---------------------------------------------------------------------------
 
+
 def test_inline_augment_creates_augmented_entry():
     lib = _aug_lib()
     lib.add_from_text("""
@@ -797,6 +823,7 @@ def test_inline_augment_replaces_block():
 # Augmented entry naming
 # ---------------------------------------------------------------------------
 
+
 def test_augmented_entry_name_contains_at_tag():
     lib = _aug_lib()
     lib.add_from_text("""
@@ -827,6 +854,7 @@ def test_augmented_entry_name_multi_tag_application_order():
 # ---------------------------------------------------------------------------
 # with_augment_filter / skip_augments / only_augments
 # ---------------------------------------------------------------------------
+
 
 def _augmented_lib():
     lib = _aug_lib()
@@ -870,3 +898,174 @@ def test_with_augment_filter_preserves_augments_registry():
     lib = _augmented_lib()
     filtered = lib.with_augment_filter(skip_augments=["mk2"])
     assert filtered._augments is lib._augments
+
+
+# ---------------------------------------------------------------------------
+# ProcessLibrary constructor convenience
+# ---------------------------------------------------------------------------
+
+
+def test_constructor_text_param():
+    lib = ProcessLibrary(text="1 widget | press:\n2 iron\n")
+    assert any("widget" in n for n in lib.recipes)
+
+
+def test_constructor_path_param(tmp_path):
+    p = tmp_path / "r.txt"
+    p.write_text("1 widget | press:\n2 iron\n")
+    lib = ProcessLibrary(path=str(p))
+    assert any("widget" in n for n in lib.recipes)
+
+
+def test_constructor_raises_if_both_text_and_path(tmp_path):
+    p = tmp_path / "r.txt"
+    p.write_text("1 widget:\n2 iron\n")
+    with pytest.raises(ValueError):
+        ProcessLibrary(text="1 widget:\n2 iron\n", path=str(p))
+
+
+def test_constructor_augments_dict_applied():
+    from crafting_process.augment import Augments
+
+    lib = ProcessLibrary(
+        augments={"fast": Augments.mul_speed(2)},
+        text="@fast\n\n1 widget | press: duration=1\n2 iron\n",
+    )
+    augmented = [p for p in lib.recipes.values() if p.applied_augments == ["fast"]]
+    assert len(augmented) == 1
+    assert augmented[0].duration == pytest.approx(0.5)
+
+
+# ---------------------------------------------------------------------------
+# filtered()
+# ---------------------------------------------------------------------------
+
+
+def test_filtered_returns_matching_recipes():
+    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    filtered = lib.filtered(lambda p: "iron" in p.outputs.nonzero_components)
+    assert all(
+        "iron" in p.outputs.nonzero_components for p in filtered.recipes.values()
+    )
+    assert len(filtered.recipes) == 1
+
+
+def test_filtered_preserves_augment_registry():
+    from crafting_process.augment import Augments
+
+    lib = ProcessLibrary()
+    lib.register_augment("fast", Augments.mul_speed(2))
+    lib.add_from_text("1 widget | press: duration=1\n2 iron\n")
+    filtered = lib.filtered(lambda p: True)
+    assert "fast" in filtered._augments
+
+
+def test_filtered_with_pred_operators():
+    from crafting_process.library import P
+
+    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    filtered = lib.filtered(P.produces("iron") | P.produces("widget"))
+    assert len(filtered.recipes) == 2
+
+
+# ---------------------------------------------------------------------------
+# __or__ merge
+# ---------------------------------------------------------------------------
+
+
+def test_merge_combines_recipes():
+    lib_a = ProcessLibrary(text="1 iron | smelt:\n2 ore\n")
+    lib_b = ProcessLibrary(text="1 widget | press:\n2 iron\n")
+    merged = lib_a | lib_b
+    assert any("iron" in n for n in merged.recipes)
+    assert any("widget" in n for n in merged.recipes)
+
+
+def test_merge_right_wins_on_collision():
+    lib_a = ProcessLibrary(text="1 iron | smelt:\n2 ore\n")
+    lib_b = ProcessLibrary(text="1 iron | smelt:\n5 ore\n")
+    merged = lib_a | lib_b
+    iron_procs = [
+        p for p in merged.recipes.values() if "iron" in p.outputs.nonzero_components
+    ]
+    assert any(p.inputs["ore"] == 5 for p in iron_procs)
+
+
+def test_merge_preserves_augment_registries():
+    from crafting_process.augment import Augments
+
+    lib_a = ProcessLibrary()
+    lib_a.register_augment("fast", Augments.mul_speed(2))
+    lib_b = ProcessLibrary()
+    lib_b.register_augment("slow", Augments.mul_speed(0.5))
+    merged = lib_a | lib_b
+    assert "fast" in merged._augments
+    assert "slow" in merged._augments
+
+
+# ---------------------------------------------------------------------------
+# P predicate namespace
+# ---------------------------------------------------------------------------
+
+
+def test_P_produces():
+    from crafting_process.library import P
+
+    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    filtered = lib.filtered(P.produces("iron"))
+    assert len(filtered.recipes) == 1
+
+
+def test_P_consumes():
+    from crafting_process.library import P
+
+    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    filtered = lib.filtered(P.consumes("iron"))
+    assert len(filtered.recipes) == 1
+
+
+def test_P_process_is():
+    from crafting_process.library import P
+
+    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    filtered = lib.filtered(P.process_is("smelt"))
+    assert len(filtered.recipes) == 1
+
+
+def test_P_has_augment():
+    from crafting_process.library import P
+    from crafting_process.augment import Augments
+
+    lib = ProcessLibrary(
+        augments={"mk2": Augments.mul_speed(1.5)},
+        text="@mk2\n\n1 widget | press: duration=1\n2 iron\n",
+    )
+    filtered = lib.filtered(P.has_augment("mk2"))
+    assert all("mk2" in p.applied_augments for p in filtered.recipes.values())
+
+
+def test_P_and_operator():
+    from crafting_process.library import P
+
+    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    pred = P.produces("iron") & P.consumes("ore")
+    filtered = lib.filtered(pred)
+    assert len(filtered.recipes) == 1
+
+
+def test_P_or_operator():
+    from crafting_process.library import P
+
+    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    filtered = lib.filtered(P.produces("iron") | P.produces("widget"))
+    assert len(filtered.recipes) == 2
+
+
+def test_P_invert_operator():
+    from crafting_process.library import P
+
+    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    filtered = lib.filtered(~P.produces("iron"))
+    assert all(
+        "iron" not in p.outputs.nonzero_components for p in filtered.recipes.values()
+    )

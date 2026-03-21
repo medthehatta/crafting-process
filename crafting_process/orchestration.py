@@ -1,4 +1,5 @@
 import itertools
+from dataclasses import dataclass
 from pprint import pprint
 from math import ceil
 
@@ -6,10 +7,42 @@ from cytoolz import unique
 from cytoolz import interleave
 
 from .graph import GraphBuilder
-from .process import Process
-from .library import Ingredients
+from .process import Process, Ingredients
 from .solver import best_milp_sequence
 from .utils import only as _only
+
+
+@dataclass(frozen=True)
+class ProcessCount:
+    count: int
+    description: str
+    slug: str
+
+
+@dataclass(frozen=True)
+class PlanResult:
+    desired: Ingredients
+    total_processes: int
+    leak: float
+    transfer: Ingredients
+    inputs: list
+    process_counts: list  # list[ProcessCount]
+    output_quantities: dict
+    process_augments: dict
+
+
+def plan(library, transfer, *, n=5, num_keep=4, **production_graphs_kwargs):
+    """Run the full pipeline and return the top n PlanResults.
+
+    transfer can be a string ("10 iron plate") or an Ingredients instance.
+    Results are ranked by (leak, total_processes) ascending — lower is better.
+    """
+    if isinstance(transfer, str):
+        transfer = Ingredients.parse(transfer)
+    graphs = list(production_graphs(library, transfer, **production_graphs_kwargs))
+    results = list(analyze_graphs(graphs, num_keep=num_keep))
+    results.sort(key=lambda r: (r.leak, r.total_processes))
+    return results[:n]
 
 
 def analyze_graphs(graphs, num_keep=4):
@@ -36,41 +69,31 @@ def analyze_graph(graph, num_keep=4):
         relevant = milps
 
     for m in relevant:
-        result = {}
-        result["desired"] = desired
-
         total_processes = sum(c for (c, _, _) in m["counts"])
         count_by_process = {name: count for (count, _, name) in m["counts"]}
         dangling = graph.open_outputs + graph.open_inputs
         transfer = Ingredients.sum(
             # FIXME: This is batch specific
-            count_by_process[name] *
-            graph.processes[name].transfer_quantity(True).project(kind)
+            count_by_process[name]
+            * graph.processes[name].transfer_quantity(True).project(kind)
             for (name, kind) in dangling
         )
 
-        result["total_processes"] = total_processes
-        result["leak"] = m["leakage"]
-        result["transfer"] = transfer
-        result["inputs"] = sorted(
-            [
-                (-amt, kind) for (kind, amt, _) in transfer.triples()
-                if kind != "_"
-            ],
+        inputs = sorted(
+            [(-amt, kind) for (kind, amt, _) in transfer.triples() if kind != "_"],
             reverse=True,
         )
 
-        counts_by_product = sorted(
-            m["counts"],
-            # x = (count, product description, process name)
-            key=lambda x: (output_depths[x[1]], x[1]),
-            reverse=True,
-        )
+        process_counts = [
+            ProcessCount(count=c, description=desc, slug=slug)
+            for (c, desc, slug) in sorted(
+                m["counts"],
+                key=lambda x: (output_depths[x[1]], x[1]),
+                reverse=True,
+            )
+        ]
 
-        result["sorted_process_counts"] = counts_by_product
-
-        # Actual yield of each desired kind: sum outputs across all producers.
-        result["yield"] = {
+        output_quantities = {
             kind: sum(
                 count_by_process.get(name, 0) * proc.outputs[kind]
                 for (name, proc) in graph.processes.items()
@@ -79,13 +102,20 @@ def analyze_graph(graph, num_keep=4):
             for kind in desired.nonzero_components
         }
 
-        # Applied augments keyed by process slug, for optional display.
-        result["process_augments"] = {
-            name: proc.applied_augments
-            for (name, proc) in graph.processes.items()
+        process_augments = {
+            name: proc.applied_augments for (name, proc) in graph.processes.items()
         }
 
-        yield result
+        yield PlanResult(
+            desired=desired,
+            total_processes=total_processes,
+            leak=m["leakage"],
+            transfer=transfer,
+            inputs=inputs,
+            process_counts=process_counts,
+            output_quantities=output_quantities,
+            process_augments=process_augments,
+        )
 
 
 def show_graph(graph):
@@ -117,10 +147,7 @@ def input_combinations(input_kinds, kind_providers, max_overlap=2):
     # dest: abcde
     # inputs: abx cde a b c d e
     providing = {
-        kind: [
-            i for (i, provider) in enumerate(kind_providers)
-            if kind in provider
-        ]
+        kind: [i for (i, provider) in enumerate(kind_providers) if kind in provider]
         for kind in input_kinds
     }
 
@@ -137,10 +164,10 @@ def input_combinations(input_kinds, kind_providers, max_overlap=2):
     yield from unique(
         itertools.chain.from_iterable(
             (
-                _flatten_tup_of_tups(prod) for prod in
-                itertools.product(*[_c(kind, i) for kind in providing])
+                _flatten_tup_of_tups(prod)
+                for prod in itertools.product(*[_c(kind, i) for kind in providing])
             )
-            for i in range(1, min(max_overlap, len(providing))+1)
+            for i in range(1, min(max_overlap, len(providing)) + 1)
         )
     )
 
@@ -183,17 +210,16 @@ def _production_graphs(
     visited = visited if visited is not None else set()
 
     desired_kinds = set(
-        kind for (name, kind) in consuming_graph.open_inputs
-        if kind not in stop_kinds
+        kind for (name, kind) in consuming_graph.open_inputs if kind not in stop_kinds
     )
 
     input_recipes = []
     recursable_kinds = []
     for kind in desired_kinds:
         producers = [
-            (name, proc) for (name, proc) in recipes.producing(kind)
-            if proc.process not in skip_processes
-            and name not in visited
+            (name, proc)
+            for (name, proc) in recipes.producing(kind)
+            if proc.process not in skip_processes and name not in visited
         ]
         if producers:
             input_recipes.extend(producers)
@@ -216,8 +242,7 @@ def _production_graphs(
 
     indexed = dict(enumerate(input_recipes))
     kinds_produced = [
-        tuple(process.outputs.nonzero_components)
-        for (_, process) in input_recipes
+        tuple(process.outputs.nonzero_components) for (_, process) in input_recipes
     ]
     combos = input_combinations(
         recursable_kinds,
@@ -246,32 +271,31 @@ def _production_graphs(
 def printable_analysis(aly, show_augments=False):
     out_lines = []
 
-    first = next(aly)
-    desired = first["desired"]
+    first = next(iter(aly))
+    desired = first.desired
     w = len(str(desired))
-    out_lines.append("#"*(10 + w))
+    out_lines.append("#" * (10 + w))
     out_lines.append(f"#    {desired}    #")
-    out_lines.append("#"*(10 + w))
+    out_lines.append("#" * (10 + w))
     out_lines.append("")
 
-    for (i, a) in enumerate(itertools.chain([first], aly), start=1):
-        tot = a["total_processes"] - 1
-        tot_s = f"1 process" if tot == 1 else f"{tot} processes"
-        out_lines.append(f"{i}) {tot_s}, {a['leak']} leak")
+    for i, a in enumerate(itertools.chain([first], aly), start=1):
+        tot = a.total_processes - 1
+        tot_s = "1 process" if tot == 1 else f"{tot} processes"
+        out_lines.append(f"{i}) {tot_s}, {a.leak} leak")
 
-        # Yield line: actual output quantity of each desired kind.
-        yield_dict = a.get("yield", {})
-        if yield_dict:
-            desired_obj = a["desired"]
+        if a.output_quantities:
             yield_parts = []
             want_parts = []
-            for kind in sorted(yield_dict):
-                actual = yield_dict[kind]
+            for kind in sorted(a.output_quantities):
+                actual = a.output_quantities[kind]
                 amt_str = str(int(actual)) if int(actual) == actual else f"{actual:.2f}"
                 yield_parts.append(f"{amt_str} {kind}")
-                wanted = desired_obj[kind]
+                wanted = a.desired[kind]
                 if actual != wanted:
-                    w_str = str(int(wanted)) if int(wanted) == wanted else f"{wanted:.2f}"
+                    w_str = (
+                        str(int(wanted)) if int(wanted) == wanted else f"{wanted:.2f}"
+                    )
                     want_parts.append(f"{w_str} {kind}")
             makes_line = f"   makes: {' + '.join(yield_parts)}"
             if want_parts:
@@ -280,7 +304,7 @@ def printable_analysis(aly, show_augments=False):
 
         out_lines.append("")
 
-        for (amt, inp) in a["inputs"]:
+        for amt, inp in a.inputs:
             if int(amt) == amt:
                 amt_str = str(ceil(amt))
             else:
@@ -289,15 +313,15 @@ def printable_analysis(aly, show_augments=False):
 
         out_lines.append("")
 
-        augments_map = a.get("process_augments", {}) if show_augments else {}
-        for (count, desc, procname) in a["sorted_process_counts"]:
-            if desc == "_":
+        for pc in a.process_counts:
+            if pc.description == "_":
                 continue
-            label = desc
-            augs = augments_map.get(procname, [])
-            if augs:
-                label += " " + " ".join(f"@{aug}" for aug in augs)
-            out_lines.append(f"    {count}x {label}")
+            label = pc.description
+            if show_augments:
+                augs = a.process_augments.get(pc.slug, [])
+                if augs:
+                    label += " " + " ".join(f"@{aug}" for aug in augs)
+            out_lines.append(f"    {pc.count}x {label}")
 
         out_lines.append("")
 

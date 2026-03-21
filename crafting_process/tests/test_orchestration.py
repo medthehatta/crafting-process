@@ -14,10 +14,10 @@ from crafting_process.graph import GraphBuilder
 from crafting_process.library import ProcessLibrary
 from crafting_process.process import Ingredients, Process
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def linear_library():
@@ -36,6 +36,7 @@ def linear_library():
 # ---------------------------------------------------------------------------
 # input_combinations
 # ---------------------------------------------------------------------------
+
 
 def test_input_combinations_single_kind_single_provider():
     result = list(input_combinations(["iron"], [("iron",)]))
@@ -101,6 +102,7 @@ def test_input_combinations_returns_iterable():
 # batch_milps
 # ---------------------------------------------------------------------------
 
+
 def _make_connected_graph():
     """3 ore -> 2 iron -> 1 widget; hand-built batch graph."""
     g = GraphBuilder()
@@ -109,7 +111,9 @@ def _make_connected_graph():
         name="smelter",
     )
     g.add_process(
-        Process(outputs=Ingredients.parse("1 widget"), inputs=Ingredients.parse("2 iron")),
+        Process(
+            outputs=Ingredients.parse("1 widget"), inputs=Ingredients.parse("2 iron")
+        ),
         name="press",
     )
     g._connect_process_to_process("smelter", "press", kind="iron")
@@ -153,6 +157,7 @@ def test_batch_milps_final_leakage_zero_for_balanced_graph():
 # production_graphs
 # ---------------------------------------------------------------------------
 
+
 def test_production_graphs_yields_graphs(linear_library):
     graphs = list(production_graphs(linear_library, Ingredients.parse("1 widget")))
     assert len(graphs) >= 1
@@ -178,9 +183,11 @@ def test_production_graphs_graph_contains_producers(linear_library):
 
 def test_production_graphs_stop_kinds_limits_recursion(linear_library):
     # stop_kinds=["iron"] halts before adding the smelter
-    g = next(production_graphs(
-        linear_library, Ingredients.parse("1 widget"), stop_kinds=["iron"]
-    ))
+    g = next(
+        production_graphs(
+            linear_library, Ingredients.parse("1 widget"), stop_kinds=["iron"]
+        )
+    )
     descriptions = {p.describe() for p in g.processes.values()}
     assert any("widget" in d for d in descriptions)
     assert not any("iron" in d for d in descriptions)
@@ -188,9 +195,11 @@ def test_production_graphs_stop_kinds_limits_recursion(linear_library):
 
 def test_production_graphs_skip_processes_excludes_process(linear_library):
     # skip_processes=["smelt"] removes the smelter; no producers for iron remain
-    g = next(production_graphs(
-        linear_library, Ingredients.parse("1 widget"), skip_processes=["smelt"]
-    ))
+    g = next(
+        production_graphs(
+            linear_library, Ingredients.parse("1 widget"), skip_processes=["smelt"]
+        )
+    )
     descriptions = {p.describe() for p in g.processes.values()}
     assert not any("iron" in d for d in descriptions)
 
@@ -199,6 +208,7 @@ def test_production_graphs_skip_processes_excludes_process(linear_library):
 # analyze_graph
 # ---------------------------------------------------------------------------
 
+
 def _first_result(library, transfer_str):
     g = next(production_graphs(library, Ingredients.parse(transfer_str)))
     return next(analyze_graph(g))
@@ -206,57 +216,57 @@ def _first_result(library, transfer_str):
 
 def test_analyze_graph_desired_matches_requested(linear_library):
     result = _first_result(linear_library, "1 widget")
-    assert result["desired"]["widget"] == 1
+    assert result.desired["widget"] == 1
 
 
 def test_analyze_graph_leak_is_float(linear_library):
-    assert isinstance(_first_result(linear_library, "1 widget")["leak"], float)
+    assert isinstance(_first_result(linear_library, "1 widget").leak, float)
 
 
 def test_analyze_graph_leak_is_zero_for_balanced(linear_library):
-    assert _first_result(linear_library, "1 widget")["leak"] == pytest.approx(0.0)
+    assert _first_result(linear_library, "1 widget").leak == pytest.approx(0.0)
 
 
 def test_analyze_graph_total_processes_includes_sentinel(linear_library):
     # smelter=1, press=1, sink=1 → total_processes=3 (sentinel counted)
-    assert _first_result(linear_library, "1 widget")["total_processes"] == 3
+    assert _first_result(linear_library, "1 widget").total_processes == 3
 
 
 def test_analyze_graph_inputs_lists_ore(linear_library):
     result = _first_result(linear_library, "1 widget")
-    kinds = [kind for (_, kind) in result["inputs"]]
+    kinds = [kind for (_, kind) in result.inputs]
     assert "ore" in kinds
 
 
 def test_analyze_graph_inputs_excludes_sentinel(linear_library):
     result = _first_result(linear_library, "1 widget")
-    kinds = [kind for (_, kind) in result["inputs"]]
+    kinds = [kind for (_, kind) in result.inputs]
     assert "_" not in kinds
 
 
 def test_analyze_graph_ore_amount_correct(linear_library):
     result = _first_result(linear_library, "1 widget")
-    ore_entries = [(amt, kind) for (amt, kind) in result["inputs"] if kind == "ore"]
+    ore_entries = [(amt, kind) for (amt, kind) in result.inputs if kind == "ore"]
     assert ore_entries == [(3, "ore")]
 
 
 def test_analyze_graph_sorted_process_counts_is_list(linear_library):
     result = _first_result(linear_library, "1 widget")
-    assert isinstance(result["sorted_process_counts"], list)
+    assert isinstance(result.process_counts, list)
 
 
 def test_analyze_graph_sorted_process_counts_are_triples(linear_library):
     result = _first_result(linear_library, "1 widget")
-    for count, desc, name in result["sorted_process_counts"]:
-        assert isinstance(count, int)
-        assert isinstance(desc, str)
-        assert isinstance(name, str)
+    for pc in result.process_counts:
+        assert isinstance(pc.count, int)
+        assert isinstance(pc.description, str)
+        assert isinstance(pc.slug, str)
 
 
 def test_analyze_graph_sorted_process_counts_deepest_first(linear_library):
     # smelter is deeper (upstream) than press → its entry comes first
     result = _first_result(linear_library, "1 widget")
-    descs = [desc for (_, desc, _) in result["sorted_process_counts"]]
+    descs = [pc.description for pc in result.process_counts]
     iron_idx = next(i for i, d in enumerate(descs) if "iron" in d)
     widget_idx = next(i for i, d in enumerate(descs) if "widget" in d)
     assert iron_idx < widget_idx
@@ -264,36 +274,40 @@ def test_analyze_graph_sorted_process_counts_deepest_first(linear_library):
 
 def test_analyze_graph_yield_present(linear_library):
     result = _first_result(linear_library, "1 widget")
-    assert "yield" in result
+    assert result.output_quantities is not None
 
 
 def test_analyze_graph_yield_matches_request_when_balanced(linear_library):
     # 1x press → 1 widget per run; no leak on balanced graph
     result = _first_result(linear_library, "1 widget")
-    assert result["yield"]["widget"] == pytest.approx(1.0)
+    assert result.output_quantities["widget"] == pytest.approx(1.0)
 
 
 def test_analyze_graph_yield_reflects_mul_outputs():
     # Process produces 2 widgets per run; requesting 1 → yield == 2
     lib = ProcessLibrary()
     from crafting_process.augment import Augments
+
     lib.register_augment("double", Augments.mul_outputs(2))
-    lib.add_from_text("1 widget | press:\n2 iron\n\n@double\n\n2 iron | smelt:\n3 ore\n")
+    lib.add_from_text(
+        "1 widget | press:\n2 iron\n\n@double\n\n2 iron | smelt:\n3 ore\n"
+    )
     # Use the un-augmented press so yield == 1, as a baseline sanity check
-    g = next(production_graphs(lib, Ingredients.parse("1 widget"),
-                                skip_augments=["double"]))
+    g = next(
+        production_graphs(lib, Ingredients.parse("1 widget"), skip_augments=["double"])
+    )
     r = next(analyze_graph(g))
-    assert r["yield"]["widget"] == pytest.approx(1.0)
+    assert r.output_quantities["widget"] == pytest.approx(1.0)
 
 
 def test_analyze_graph_process_augments_present(linear_library):
     result = _first_result(linear_library, "1 widget")
-    assert "process_augments" in result
+    assert result.process_augments is not None
 
 
 def test_analyze_graph_process_augments_originals_empty(linear_library):
     result = _first_result(linear_library, "1 widget")
-    for slug, augs in result["process_augments"].items():
+    for slug, augs in result.process_augments.items():
         assert augs == []
 
 
@@ -305,6 +319,7 @@ def test_analyze_graph_is_generator(linear_library):
 # ---------------------------------------------------------------------------
 # analyze_graphs
 # ---------------------------------------------------------------------------
+
 
 def test_analyze_graphs_yields_results(linear_library):
     graphs = list(production_graphs(linear_library, Ingredients.parse("1 widget")))
@@ -321,13 +336,16 @@ def test_analyze_graphs_single_graph_same_count_as_analyze_graph(linear_library)
 # printable_analysis
 # ---------------------------------------------------------------------------
 
+
 def _make_analysis(library, transfer_str):
     g = next(production_graphs(library, Ingredients.parse(transfer_str)))
     return analyze_graph(g)
 
 
 def test_printable_analysis_returns_string(linear_library):
-    assert isinstance(printable_analysis(_make_analysis(linear_library, "1 widget")), str)
+    assert isinstance(
+        printable_analysis(_make_analysis(linear_library, "1 widget")), str
+    )
 
 
 def test_printable_analysis_contains_desired_resource(linear_library):
@@ -348,7 +366,8 @@ def test_printable_analysis_contains_raw_material(linear_library):
 def test_printable_analysis_excludes_sentinel(linear_library):
     result = printable_analysis(_make_analysis(linear_library, "1 widget"))
     process_lines = [
-        l.strip() for l in result.splitlines()
+        l.strip()
+        for l in result.splitlines()
         if l.strip().startswith(tuple("0123456789"))
     ]
     assert not any(l.endswith("_") or "x _" in l for l in process_lines)
@@ -374,14 +393,20 @@ def test_printable_analysis_makes_line_shows_yield(linear_library):
 
 def test_printable_analysis_show_augments_false_no_at_signs(linear_library):
     # Default: no @augment suffixes on process lines
-    result = printable_analysis(_make_analysis(linear_library, "1 widget"),
-                                show_augments=False)
-    process_lines = [l for l in result.splitlines() if "x " in l and l.strip().startswith(tuple("0123456789"))]
+    result = printable_analysis(
+        _make_analysis(linear_library, "1 widget"), show_augments=False
+    )
+    process_lines = [
+        l
+        for l in result.splitlines()
+        if "x " in l and l.strip().startswith(tuple("0123456789"))
+    ]
     assert not any("@" in l for l in process_lines)
 
 
 def test_printable_analysis_show_augments_true_appends_augments():
     from crafting_process.augment import Augments
+
     lib = ProcessLibrary()
     lib.register_augment("mk2", Augments.mul_outputs(2))
     lib.add_from_text("""
@@ -405,6 +430,7 @@ def test_printable_analysis_show_augments_true_appends_augments():
 # ---------------------------------------------------------------------------
 # Simpler cases that establish correct behaviour before the more complex
 # bug-revealing scenarios (cases 1-5 below).
+
 
 @pytest.fixture
 def single_multi_output_provider():
@@ -461,96 +487,113 @@ def two_providers_one_with_byproduct():
 
 
 def test_single_multi_output_provider_yields_one_graph(single_multi_output_provider):
-    graphs = list(production_graphs(
-        single_multi_output_provider, Ingredients.parse("1 widget")
-    ))
+    graphs = list(
+        production_graphs(single_multi_output_provider, Ingredients.parse("1 widget"))
+    )
     assert len(graphs) == 1
 
 
 def test_single_multi_output_byproduct_in_open_outputs(single_multi_output_provider):
-    g = next(production_graphs(single_multi_output_provider, Ingredients.parse("1 widget")))
+    g = next(
+        production_graphs(single_multi_output_provider, Ingredients.parse("1 widget"))
+    )
     open_output_kinds = {kind for (_, kind) in g.open_outputs}
     assert "slag" in open_output_kinds
 
 
 def test_single_multi_output_needed_output_is_connected(single_multi_output_provider):
     # iron is consumed by press; it should NOT be in open_outputs
-    g = next(production_graphs(single_multi_output_provider, Ingredients.parse("1 widget")))
+    g = next(
+        production_graphs(single_multi_output_provider, Ingredients.parse("1 widget"))
+    )
     open_output_kinds = {kind for (_, kind) in g.open_outputs}
     assert "iron" not in open_output_kinds
 
 
 def test_single_multi_output_raw_material_in_open_inputs(single_multi_output_provider):
-    g = next(production_graphs(single_multi_output_provider, Ingredients.parse("1 widget")))
+    g = next(
+        production_graphs(single_multi_output_provider, Ingredients.parse("1 widget"))
+    )
     open_input_kinds = {kind for (_, kind) in g.open_inputs}
     assert "ore" in open_input_kinds
 
 
 def test_single_multi_output_iron_pool_exists(single_multi_output_provider):
-    g = next(production_graphs(single_multi_output_provider, Ingredients.parse("1 widget")))
+    g = next(
+        production_graphs(single_multi_output_provider, Ingredients.parse("1 widget"))
+    )
     assert len(g.find_pools_by_kind("iron")) == 1
 
 
 def test_two_direct_providers_yields_two_graphs(two_direct_providers):
-    graphs = list(production_graphs(two_direct_providers, Ingredients.parse("1 widget")))
+    graphs = list(
+        production_graphs(two_direct_providers, Ingredients.parse("1 widget"))
+    )
     assert len(graphs) == 2
 
 
 def test_two_direct_providers_each_graph_has_one_upstream_process(two_direct_providers):
     # Each graph: sink + exactly one widget-producer (no further upstream)
-    graphs = list(production_graphs(two_direct_providers, Ingredients.parse("1 widget")))
+    graphs = list(
+        production_graphs(two_direct_providers, Ingredients.parse("1 widget"))
+    )
     for g in graphs:
-        widget_producers = [
-            p for p in g.processes.values() if p.outputs["widget"] > 0
-        ]
+        widget_producers = [p for p in g.processes.values() if p.outputs["widget"] > 0]
         assert len(widget_producers) == 1
 
 
 def test_two_direct_providers_cover_both_raw_materials(two_direct_providers):
-    graphs = list(production_graphs(two_direct_providers, Ingredients.parse("1 widget")))
+    graphs = list(
+        production_graphs(two_direct_providers, Ingredients.parse("1 widget"))
+    )
     all_open_input_kinds = {kind for g in graphs for (_, kind) in g.open_inputs}
     assert "iron" in all_open_input_kinds
     assert "copper" in all_open_input_kinds
 
 
 def test_two_direct_providers_graphs_use_different_inputs(two_direct_providers):
-    graphs = list(production_graphs(two_direct_providers, Ingredients.parse("1 widget")))
+    graphs = list(
+        production_graphs(two_direct_providers, Ingredients.parse("1 widget"))
+    )
     input_sets = [frozenset(k for (_, k) in g.open_inputs) for g in graphs]
     assert input_sets[0] != input_sets[1]
 
 
-def test_two_providers_one_with_byproduct_yields_two_graphs(two_providers_one_with_byproduct):
-    graphs = list(production_graphs(
-        two_providers_one_with_byproduct, Ingredients.parse("1 widget")
-    ))
+def test_two_providers_one_with_byproduct_yields_two_graphs(
+    two_providers_one_with_byproduct,
+):
+    graphs = list(
+        production_graphs(
+            two_providers_one_with_byproduct, Ingredients.parse("1 widget")
+        )
+    )
     assert len(graphs) == 2
 
 
 def test_two_providers_one_graph_has_no_slag(two_providers_one_with_byproduct):
-    graphs = list(production_graphs(
-        two_providers_one_with_byproduct, Ingredients.parse("1 widget")
-    ))
-    slag_counts = [
-        sum(1 for (_, k) in g.open_outputs if k == "slag")
-        for g in graphs
-    ]
+    graphs = list(
+        production_graphs(
+            two_providers_one_with_byproduct, Ingredients.parse("1 widget")
+        )
+    )
+    slag_counts = [sum(1 for (_, k) in g.open_outputs if k == "slag") for g in graphs]
     assert 0 in slag_counts
 
 
 def test_two_providers_one_graph_has_slag(two_providers_one_with_byproduct):
-    graphs = list(production_graphs(
-        two_providers_one_with_byproduct, Ingredients.parse("1 widget")
-    ))
-    slag_counts = [
-        sum(1 for (_, k) in g.open_outputs if k == "slag")
-        for g in graphs
-    ]
+    graphs = list(
+        production_graphs(
+            two_providers_one_with_byproduct, Ingredients.parse("1 widget")
+        )
+    )
+    slag_counts = [sum(1 for (_, k) in g.open_outputs if k == "slag") for g in graphs]
     assert 1 in slag_counts
 
 
 # ---------------------------------------------------------------------------
 # Fixtures for production_graphs branching cases
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def two_single_output_providers():
@@ -646,32 +689,32 @@ def branching_library():
 # Case 1: Two single-output processes for the same kind
 # ---------------------------------------------------------------------------
 
+
 def test_two_single_output_providers_yields_two_graphs(two_single_output_providers):
-    graphs = list(production_graphs(
-        two_single_output_providers, Ingredients.parse("1 widget")
-    ))
+    graphs = list(
+        production_graphs(two_single_output_providers, Ingredients.parse("1 widget"))
+    )
     assert len(graphs) == 2
 
 
-def test_two_single_output_providers_graphs_use_different_smelters(two_single_output_providers):
-    graphs = list(production_graphs(
-        two_single_output_providers, Ingredients.parse("1 widget")
-    ))
+def test_two_single_output_providers_graphs_use_different_smelters(
+    two_single_output_providers,
+):
+    graphs = list(
+        production_graphs(two_single_output_providers, Ingredients.parse("1 widget"))
+    )
     # Each graph should leave a different raw-material open_input (ore_a vs ore_b)
-    open_input_kinds = [
-        frozenset(kind for (_, kind) in g.open_inputs)
-        for g in graphs
-    ]
+    open_input_kinds = [frozenset(kind for (_, kind) in g.open_inputs) for g in graphs]
     assert open_input_kinds[0] != open_input_kinds[1]
 
 
 def test_two_single_output_providers_cover_ore_a_and_ore_b(two_single_output_providers):
-    graphs = list(production_graphs(
-        two_single_output_providers, Ingredients.parse("1 widget")
-    ))
+    graphs = list(
+        production_graphs(two_single_output_providers, Ingredients.parse("1 widget"))
+    )
     all_open_input_kinds = set()
     for g in graphs:
-        for (_, kind) in g.open_inputs:
+        for _, kind in g.open_inputs:
             all_open_input_kinds.add(kind)
     assert "ore_a" in all_open_input_kinds
     assert "ore_b" in all_open_input_kinds
@@ -681,12 +724,15 @@ def test_two_single_output_providers_cover_ore_a_and_ore_b(two_single_output_pro
 # Case 2: Two multi-output providers with no output-kind overlap
 # ---------------------------------------------------------------------------
 
+
 def test_non_overlapping_multi_output_providers_yields_two_graphs(
     two_non_overlapping_multi_output_providers,
 ):
-    graphs = list(production_graphs(
-        two_non_overlapping_multi_output_providers, Ingredients.parse("1 widget")
-    ))
+    graphs = list(
+        production_graphs(
+            two_non_overlapping_multi_output_providers, Ingredients.parse("1 widget")
+        )
+    )
     assert len(graphs) == 2
 
 
@@ -694,22 +740,26 @@ def test_non_overlapping_multi_output_providers_byproduct_in_open_outputs(
     two_non_overlapping_multi_output_providers,
 ):
     # Each graph has exactly one slag byproduct as an open_output
-    graphs = list(production_graphs(
-        two_non_overlapping_multi_output_providers, Ingredients.parse("1 widget")
-    ))
+    graphs = list(
+        production_graphs(
+            two_non_overlapping_multi_output_providers, Ingredients.parse("1 widget")
+        )
+    )
     for g in graphs:
         slag_outputs = [kind for (_, kind) in g.open_outputs if "slag" in kind]
-        assert len(slag_outputs) == 1, (
-            f"Expected exactly 1 slag open_output, got {slag_outputs}"
-        )
+        assert (
+            len(slag_outputs) == 1
+        ), f"Expected exactly 1 slag open_output, got {slag_outputs}"
 
 
 def test_non_overlapping_multi_output_providers_both_slags_represented(
     two_non_overlapping_multi_output_providers,
 ):
-    graphs = list(production_graphs(
-        two_non_overlapping_multi_output_providers, Ingredients.parse("1 widget")
-    ))
+    graphs = list(
+        production_graphs(
+            two_non_overlapping_multi_output_providers, Ingredients.parse("1 widget")
+        )
+    )
     all_slag_kinds = {
         kind for g in graphs for (_, kind) in g.open_outputs if "slag" in kind
     }
@@ -721,54 +771,65 @@ def test_non_overlapping_multi_output_providers_both_slags_represented(
 # Case 3: Two multi-output providers where 2 of 3 outputs overlap
 # ---------------------------------------------------------------------------
 
+
 def test_overlapping_providers_yields_graphs(overlapping_multi_output_providers):
-    graphs = list(production_graphs(
-        overlapping_multi_output_providers, Ingredients.parse("1 widget")
-    ))
+    graphs = list(
+        production_graphs(
+            overlapping_multi_output_providers, Ingredients.parse("1 widget")
+        )
+    )
     assert len(graphs) >= 1
 
 
-def test_overlapping_providers_single_process_sufficient(overlapping_multi_output_providers):
+def test_overlapping_providers_single_process_sufficient(
+    overlapping_multi_output_providers,
+):
     # A single upstream provider (process_a or process_b) covers both iron and
     # copper.  At least one yielded graph should have exactly one iron-producing
     # process (not two copies of the same provider).
-    graphs = list(production_graphs(
-        overlapping_multi_output_providers, Ingredients.parse("1 widget")
-    ))
-    iron_producer_counts = [
-        sum(1 for p in g.processes.values() if p.outputs["iron"] > 0)
-        for g in graphs
-    ]
-    assert 1 in iron_producer_counts, (
-        f"No graph with a single iron provider found; counts were {iron_producer_counts}"
+    graphs = list(
+        production_graphs(
+            overlapping_multi_output_providers, Ingredients.parse("1 widget")
+        )
     )
+    iron_producer_counts = [
+        sum(1 for p in g.processes.values() if p.outputs["iron"] > 0) for g in graphs
+    ]
+    assert (
+        1 in iron_producer_counts
+    ), f"No graph with a single iron provider found; counts were {iron_producer_counts}"
 
 
-def test_overlapping_providers_no_duplicate_processes(overlapping_multi_output_providers):
+def test_overlapping_providers_no_duplicate_processes(
+    overlapping_multi_output_providers,
+):
     # Bug: _production_graphs adds each provider once per desired kind it
     # satisfies, so process_a ends up at two indices and can be instantiated
     # twice in the same graph.  Each graph should contain at most one instance
     # of any given process (unique describe() strings).
-    graphs = list(production_graphs(
-        overlapping_multi_output_providers, Ingredients.parse("1 widget")
-    ))
+    graphs = list(
+        production_graphs(
+            overlapping_multi_output_providers, Ingredients.parse("1 widget")
+        )
+    )
     for g in graphs:
         describes = [p.describe() for p in g.processes.values()]
-        assert len(describes) == len(set(describes)), (
-            f"Duplicate processes in graph: {describes}"
-        )
+        assert len(describes) == len(
+            set(describes)
+        ), f"Duplicate processes in graph: {describes}"
 
 
 # ---------------------------------------------------------------------------
 # Case 4: Dependency loop detection
 # ---------------------------------------------------------------------------
 
+
 def test_production_graphs_terminates_on_dependency_loop(loop_library):
     # widget → iron (via smelt, needs copper) → copper (via refine, needs iron) → loop
     # Expected with loop detection: terminates (yields nothing or partial graphs).
     # Bug: no loop detection → RecursionError.
     try:
-        result = list(production_graphs(loop_library, Ingredients.parse("1 widget")))
+        list(production_graphs(loop_library, Ingredients.parse("1 widget")))
     except RecursionError:
         pytest.fail(
             "production_graphs hit RecursionError — no dependency loop detection"
@@ -778,6 +839,7 @@ def test_production_graphs_terminates_on_dependency_loop(loop_library):
 # ---------------------------------------------------------------------------
 # Case 5: Both a direct (depth=1) and a chained (depth>1) path available
 # ---------------------------------------------------------------------------
+
 
 def test_branching_library_yields_two_graphs(branching_library):
     graphs = list(production_graphs(branching_library, Ingredients.parse("1 widget")))
@@ -809,12 +871,10 @@ def test_branching_library_direct_path_has_shallower_depth(branching_library):
     graphs = list(production_graphs(branching_library, Ingredients.parse("1 widget")))
     # Identify direct vs chain by their open_input kind
     direct_graph = next(
-        g for g in graphs
-        if any(kind == "raw" for (_, kind) in g.open_inputs)
+        g for g in graphs if any(kind == "raw" for (_, kind) in g.open_inputs)
     )
     chain_graph = next(
-        g for g in graphs
-        if any(kind == "ore" for (_, kind) in g.open_inputs)
+        g for g in graphs if any(kind == "ore" for (_, kind) in g.open_inputs)
     )
     direct_depths = direct_graph.process_depths()
     chain_depths = chain_graph.process_depths()
@@ -824,6 +884,7 @@ def test_branching_library_direct_path_has_shallower_depth(branching_library):
 # ---------------------------------------------------------------------------
 # Case 6: Single multi-output process covering all consumer needs
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def combo_provider_library():
@@ -841,19 +902,25 @@ def combo_provider_library():
 
 
 def test_combo_provider_yields_one_graph(combo_provider_library):
-    graphs = list(production_graphs(combo_provider_library, Ingredients.parse("1 widget")))
+    graphs = list(
+        production_graphs(combo_provider_library, Ingredients.parse("1 widget"))
+    )
     assert len(graphs) == 1
 
 
 def test_combo_provider_graph_has_no_duplicate_processes(combo_provider_library):
-    graphs = list(production_graphs(combo_provider_library, Ingredients.parse("1 widget")))
+    graphs = list(
+        production_graphs(combo_provider_library, Ingredients.parse("1 widget"))
+    )
     g = graphs[0]
     # Only mine_combo, assemble, and the sink "_" process
     assert len(g.processes) == 3
 
 
 def test_combo_provider_both_kinds_present(combo_provider_library):
-    graphs = list(production_graphs(combo_provider_library, Ingredients.parse("1 widget")))
+    graphs = list(
+        production_graphs(combo_provider_library, Ingredients.parse("1 widget"))
+    )
     g = graphs[0]
     pool_kinds = {pool["kind"] for pool in g.pools.values()}
     assert "iron" in pool_kinds
@@ -861,10 +928,14 @@ def test_combo_provider_both_kinds_present(combo_provider_library):
 
 
 def test_combo_provider_mine_combo_connected_to_both_pools(combo_provider_library):
-    graphs = list(production_graphs(combo_provider_library, Ingredients.parse("1 widget")))
+    graphs = list(
+        production_graphs(combo_provider_library, Ingredients.parse("1 widget"))
+    )
     g = graphs[0]
     # mine_combo should be a source in both the iron pool and the copper pool
-    mine_name = next(n for n in g.processes if "mine_combo" in g.processes[n].describe())
+    mine_name = next(
+        n for n in g.processes if "mine_combo" in g.processes[n].describe()
+    )
     iron_pool = next(p for p in g.pools.values() if p["kind"] == "iron")
     copper_pool = next(p for p in g.pools.values() if p["kind"] == "copper")
     assert mine_name in iron_pool["inputs"]
@@ -872,22 +943,27 @@ def test_combo_provider_mine_combo_connected_to_both_pools(combo_provider_librar
 
 
 def test_combo_provider_ore_is_open_input(combo_provider_library):
-    graphs = list(production_graphs(combo_provider_library, Ingredients.parse("1 widget")))
+    graphs = list(
+        production_graphs(combo_provider_library, Ingredients.parse("1 widget"))
+    )
     g = graphs[0]
     open_input_kinds = {kind for (_, kind) in g.open_inputs}
     assert "ore" in open_input_kinds
 
 
 def test_combo_provider_analyze_graph_runs(combo_provider_library):
-    graphs = list(production_graphs(combo_provider_library, Ingredients.parse("1 widget")))
+    graphs = list(
+        production_graphs(combo_provider_library, Ingredients.parse("1 widget"))
+    )
     results = list(analyze_graph(graphs[0]))
     assert len(results) >= 1
-    assert results[0]["leak"] == 0.0
+    assert results[0].leak == 0.0
 
 
 # ---------------------------------------------------------------------------
 # Case 7: Shared intermediate / diamond dependency
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def shared_intermediate_library():
@@ -911,19 +987,25 @@ def shared_intermediate_library():
 
 
 def test_shared_intermediate_yields_one_graph(shared_intermediate_library):
-    graphs = list(production_graphs(shared_intermediate_library, Ingredients.parse("1 final")))
+    graphs = list(
+        production_graphs(shared_intermediate_library, Ingredients.parse("1 final"))
+    )
     assert len(graphs) == 1
 
 
 def test_shared_intermediate_process_count(shared_intermediate_library):
-    graphs = list(production_graphs(shared_intermediate_library, Ingredients.parse("1 final")))
+    graphs = list(
+        production_graphs(shared_intermediate_library, Ingredients.parse("1 final"))
+    )
     g = graphs[0]
     # make_x, make_y, make_z, combine, sink "_"
     assert len(g.processes) == 5
 
 
 def test_shared_intermediate_x_pool_has_one_producer(shared_intermediate_library):
-    graphs = list(production_graphs(shared_intermediate_library, Ingredients.parse("1 final")))
+    graphs = list(
+        production_graphs(shared_intermediate_library, Ingredients.parse("1 final"))
+    )
     g = graphs[0]
     x_pools = [p for p in g.pools.values() if p["kind"] == "X"]
     assert len(x_pools) == 1
@@ -931,35 +1013,44 @@ def test_shared_intermediate_x_pool_has_one_producer(shared_intermediate_library
 
 
 def test_shared_intermediate_x_pool_has_two_consumers(shared_intermediate_library):
-    graphs = list(production_graphs(shared_intermediate_library, Ingredients.parse("1 final")))
+    graphs = list(
+        production_graphs(shared_intermediate_library, Ingredients.parse("1 final"))
+    )
     g = graphs[0]
     x_pools = [p for p in g.pools.values() if p["kind"] == "X"]
     assert len(x_pools[0]["outputs"]) == 2
 
 
 def test_shared_intermediate_raw_inputs(shared_intermediate_library):
-    graphs = list(production_graphs(shared_intermediate_library, Ingredients.parse("1 final")))
+    graphs = list(
+        production_graphs(shared_intermediate_library, Ingredients.parse("1 final"))
+    )
     g = graphs[0]
     open_input_kinds = {kind for (_, kind) in g.open_inputs}
     assert open_input_kinds == {"ore_a", "ore_b", "ore_c"}
 
 
 def test_shared_intermediate_analyze_graph_runs(shared_intermediate_library):
-    graphs = list(production_graphs(shared_intermediate_library, Ingredients.parse("1 final")))
+    graphs = list(
+        production_graphs(shared_intermediate_library, Ingredients.parse("1 final"))
+    )
     results = list(analyze_graph(graphs[0]))
     assert len(results) >= 1
-    assert results[0]["total_processes"] == 5  # make_x, make_y, make_z, combine, sink "_"
+    assert results[0].total_processes == 5  # make_x, make_y, make_z, combine, sink "_"
 
 
 def test_shared_intermediate_analyze_graph_zero_leak(shared_intermediate_library):
-    graphs = list(production_graphs(shared_intermediate_library, Ingredients.parse("1 final")))
+    graphs = list(
+        production_graphs(shared_intermediate_library, Ingredients.parse("1 final"))
+    )
     results = list(analyze_graph(graphs[0]))
-    assert results[0]["leak"] == 0.0
+    assert results[0].leak == 0.0
 
 
 # ---------------------------------------------------------------------------
 # Case 8: max_overlap=3 with 3 kinds × 3 providers
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def gadget_library():
@@ -1002,7 +1093,9 @@ def gadget_library():
 
 
 def test_gadget_max_overlap_2_graph_count(gadget_library):
-    graphs = list(production_graphs(gadget_library, Ingredients.parse("1 gadget"), max_overlap=2))
+    graphs = list(
+        production_graphs(gadget_library, Ingredients.parse("1 gadget"), max_overlap=2)
+    )
     # input_combinations iterates i in range(1, min(max_overlap, len(kinds))+1).
     # len(kinds)=3, max_overlap=2 → i in [1, 2].
     # For each i, it forms one combo-tuple per unique flattening of
@@ -1012,7 +1105,9 @@ def test_gadget_max_overlap_2_graph_count(gadget_library):
 
 
 def test_gadget_max_overlap_3_graph_count(gadget_library):
-    graphs = list(production_graphs(gadget_library, Ingredients.parse("1 gadget"), max_overlap=3))
+    graphs = list(
+        production_graphs(gadget_library, Ingredients.parse("1 gadget"), max_overlap=3)
+    )
     # max_overlap=3 adds i=3: C(3,3)=1 per kind → 1 extra combo (all 9 providers).
     # Total: 54 + 1 = 55 graphs.
     assert len(graphs) == 55
@@ -1020,7 +1115,9 @@ def test_gadget_max_overlap_3_graph_count(gadget_library):
 
 def test_gadget_max_overlap_3_has_all_nine_providers(gadget_library):
     """The max_overlap=3 combo that uses all 3 providers per kind should exist."""
-    graphs = list(production_graphs(gadget_library, Ingredients.parse("1 gadget"), max_overlap=3))
+    graphs = list(
+        production_graphs(gadget_library, Ingredients.parse("1 gadget"), max_overlap=3)
+    )
     # Largest graph: 9 upstream + assemble + sink = 11 processes
     largest = max(graphs, key=lambda g: len(g.processes))
     assert len(largest.processes) == 11
@@ -1028,7 +1125,9 @@ def test_gadget_max_overlap_3_has_all_nine_providers(gadget_library):
 
 def test_gadget_max_overlap_1_graph_count(gadget_library):
     # Only one provider per kind: 3^3 = 27 graphs
-    graphs = list(production_graphs(gadget_library, Ingredients.parse("1 gadget"), max_overlap=1))
+    graphs = list(
+        production_graphs(gadget_library, Ingredients.parse("1 gadget"), max_overlap=1)
+    )
     assert len(graphs) == 27
 
 
@@ -1036,10 +1135,12 @@ def test_gadget_max_overlap_1_graph_count(gadget_library):
 # skip_augments / only_augments in production_graphs
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def augmented_iron_library():
     """smelt (original), smelt @mk2, smelt @mk3; press to widget (no augments)."""
     from crafting_process.augment import Augments
+
     lib = ProcessLibrary()
     lib.register_augment("mk2", Augments.mul_speed(2.0))
     lib.register_augment("mk3", Augments.mul_speed(3.0))
@@ -1060,11 +1161,13 @@ def augmented_iron_library():
 def test_skip_augments_excludes_augmented_graphs(augmented_iron_library):
     # Without skip: 3 smelt variants × 1 press = 3 graphs
     # With skip_augments=[mk2, mk3]: only original smelt → 1 graph
-    graphs = list(production_graphs(
-        augmented_iron_library,
-        Ingredients.parse("1 widget"),
-        skip_augments=["mk2", "mk3"],
-    ))
+    graphs = list(
+        production_graphs(
+            augmented_iron_library,
+            Ingredients.parse("1 widget"),
+            skip_augments=["mk2", "mk3"],
+        )
+    )
     assert len(graphs) == 1
     # Confirm the graph uses the original smelt (no applied_augments)
     procs = list(graphs[0].processes.values())
@@ -1073,28 +1176,103 @@ def test_skip_augments_excludes_augmented_graphs(augmented_iron_library):
 
 def test_only_augments_restricts_to_specified(augmented_iron_library):
     # only_augments=["mk2"]: originals + mk2 variants → 2 smelt candidates → 2 graphs
-    graphs = list(production_graphs(
-        augmented_iron_library,
-        Ingredients.parse("1 widget"),
-        only_augments=["mk2"],
-    ))
+    graphs = list(
+        production_graphs(
+            augmented_iron_library,
+            Ingredients.parse("1 widget"),
+            only_augments=["mk2"],
+        )
+    )
     assert len(graphs) == 2
 
 
 def test_only_augments_empty_list_originals_only(augmented_iron_library):
-    graphs = list(production_graphs(
-        augmented_iron_library,
-        Ingredients.parse("1 widget"),
-        only_augments=[],
-    ))
+    graphs = list(
+        production_graphs(
+            augmented_iron_library,
+            Ingredients.parse("1 widget"),
+            only_augments=[],
+        )
+    )
     assert len(graphs) == 1
     procs = list(graphs[0].processes.values())
     assert all(p.applied_augments == [] for p in procs)
 
 
 def test_no_augment_filter_sees_all_variants(augmented_iron_library):
-    graphs = list(production_graphs(
-        augmented_iron_library,
-        Ingredients.parse("1 widget"),
-    ))
+    graphs = list(
+        production_graphs(
+            augmented_iron_library,
+            Ingredients.parse("1 widget"),
+        )
+    )
     assert len(graphs) == 3
+
+
+# ---------------------------------------------------------------------------
+# PlanResult / ProcessCount dataclasses
+# ---------------------------------------------------------------------------
+
+
+def test_analyze_graph_returns_plan_result(linear_library):
+    from crafting_process.orchestration import PlanResult
+
+    result = _first_result(linear_library, "1 widget")
+    assert isinstance(result, PlanResult)
+
+
+def test_plan_result_process_counts_are_process_count(linear_library):
+    from crafting_process.orchestration import ProcessCount
+
+    result = _first_result(linear_library, "1 widget")
+    assert all(isinstance(pc, ProcessCount) for pc in result.process_counts)
+
+
+def test_process_count_fields(linear_library):
+    result = _first_result(linear_library, "1 widget")
+    pc = result.process_counts[0]
+    assert hasattr(pc, "count")
+    assert hasattr(pc, "description")
+    assert hasattr(pc, "slug")
+
+
+# ---------------------------------------------------------------------------
+# plan()
+# ---------------------------------------------------------------------------
+
+
+def test_plan_returns_list(linear_library):
+    from crafting_process.orchestration import plan, PlanResult
+
+    results = plan(linear_library, "1 widget")
+    assert isinstance(results, list)
+    assert all(isinstance(r, PlanResult) for r in results)
+
+
+def test_plan_accepts_string_transfer(linear_library):
+    from crafting_process.orchestration import plan
+
+    results = plan(linear_library, "1 widget")
+    assert len(results) >= 1
+
+
+def test_plan_accepts_ingredients_transfer(linear_library):
+    from crafting_process.orchestration import plan
+
+    results = plan(linear_library, Ingredients.parse("1 widget"))
+    assert len(results) >= 1
+
+
+def test_plan_n_limits_results(linear_library):
+    from crafting_process.orchestration import plan
+
+    results = plan(linear_library, "1 widget", n=1)
+    assert len(results) <= 1
+
+
+def test_plan_sorted_by_leak_then_total_processes(linear_library):
+    from crafting_process.orchestration import plan
+
+    results = plan(linear_library, "1 widget", n=10)
+    for a, b in zip(results, results[1:]):
+        assert (a.leak, a.total_processes) <= (b.leak, b.total_processes)

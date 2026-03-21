@@ -1,6 +1,3 @@
-from cytoolz import curry
-
-
 def only(seq):
     lst = list(seq)
 
@@ -8,9 +5,7 @@ def only(seq):
         raise ValueError("List is empty")
 
     elif len(lst) > 1:
-        raise ValueError(
-            f"Found {len(lst)} values instead of unique value in: {lst}"
-        )
+        raise ValueError(f"Found {len(lst)} values instead of unique value in: {lst}")
 
     else:
         return lst[0]

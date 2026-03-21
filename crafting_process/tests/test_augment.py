@@ -28,6 +28,7 @@ def make_annotated(annotations, applied_augments=None):
 # Augments.mul_duration
 # ---------------------------------------------------------------------------
 
+
 def test_mul_duration_halves():
     p = make_process(duration=4.0)
     result = Augments.mul_duration(0.5)(p)
@@ -44,6 +45,7 @@ def test_mul_duration_preserves_io():
 # ---------------------------------------------------------------------------
 # Augments.mul_speed
 # ---------------------------------------------------------------------------
+
 
 def test_mul_speed_doubles_speed():
     # double speed = half duration
@@ -63,6 +65,7 @@ def test_mul_speed_preserves_io():
 # Augments.mul_inputs / mul_outputs
 # ---------------------------------------------------------------------------
 
+
 def test_mul_inputs_scales_inputs():
     p = make_process(inputs="4 iron")
     result = Augments.mul_inputs(0.5)(p)
@@ -78,6 +81,7 @@ def test_mul_outputs_scales_outputs():
 # ---------------------------------------------------------------------------
 # Augments.add_input / add_output
 # ---------------------------------------------------------------------------
+
 
 def test_add_input_appends():
     p = make_process(inputs="3 iron")
@@ -99,6 +103,7 @@ def test_add_output_appends():
 # Augments.add_input_rate / add_output_rate
 # ---------------------------------------------------------------------------
 
+
 def test_add_input_rate_scales_by_duration():
     # duration=4, rate=1 kWe/s → 4 kWe added
     p = make_process(duration=4.0, inputs="3 iron")
@@ -118,6 +123,7 @@ def test_add_output_rate_scales_by_duration():
 # ---------------------------------------------------------------------------
 # Augments.increase_energy_pct
 # ---------------------------------------------------------------------------
+
 
 def test_increase_energy_pct_adds_energy():
     p = make_process(inputs="3 iron + 100 kWe", duration=1.0)
@@ -143,6 +149,7 @@ def test_increase_energy_pct_parameterized_kind():
 # Augments.composed
 # ---------------------------------------------------------------------------
 
+
 def test_composed_chains_left_to_right():
     # mul_speed(2) halves duration; mul_outputs(3) triples outputs
     p = make_process(duration=4.0, outputs="2 widget")
@@ -162,6 +169,7 @@ def test_composed_single():
 # ---------------------------------------------------------------------------
 # Annotations and applied_augments preserved through augmentation
 # ---------------------------------------------------------------------------
+
 
 def test_augment_preserves_annotations():
     p = make_annotated({"tier": 2})

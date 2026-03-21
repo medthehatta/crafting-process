@@ -27,7 +27,7 @@ class Process:
     def from_transfer(cls, transfer, **kwargs):
         outputs = []
         inputs = []
-        for (name, component, basis) in transfer.triples():
+        for name, component, basis in transfer.triples():
             if component > 0:
                 outputs.append((name, component, basis))
             elif component < 0:
@@ -62,7 +62,9 @@ class Process:
             duration=overrides.get("duration", self.duration),
             process=new_name or overrides.get("process", self.process),
             annotations={**self.annotations, **overrides.get("annotations", {})},
-            applied_augments=overrides.get("applied_augments", list(self.applied_augments)),
+            applied_augments=overrides.get(
+                "applied_augments", list(self.applied_augments)
+            ),
         )
 
     @property
@@ -74,9 +76,7 @@ class Process:
         if self.duration:
             return (1 / self.duration) * self.transfer
         else:
-            raise ValueError(
-                "Process which has no duration has no transfer rate"
-            )
+            raise ValueError("Process which has no duration has no transfer rate")
 
     def transfer_quantity(self, batch=False):
         if batch:

@@ -43,9 +43,11 @@ lib.register_augment(
 
 lib.add_from_text(RECIPE_FILE.read_text())
 
-print(f"Library loaded: {len(lib.recipes)} entries "
-      f"({sum(1 for p in lib.recipes.values() if not p.applied_augments)} base, "
-      f"{sum(1 for p in lib.recipes.values() if p.applied_augments)} augmented)")
+print(
+    f"Library loaded: {len(lib.recipes)} entries "
+    f"({sum(1 for p in lib.recipes.values() if not p.applied_augments)} base, "
+    f"{sum(1 for p in lib.recipes.values() if p.applied_augments)} augmented)"
+)
 
 
 # ----------------------------------------------------------------
@@ -60,7 +62,7 @@ def top_graphs(graphs, n=5):
     scored = []
     for g in graphs:
         for r in analyze_graph(g, num_keep=1):
-            scored.append((r["leak"], r["total_processes"] - 1, g))
+            scored.append((r.leak, r.total_processes - 1, g))
             break
     scored.sort(key=lambda x: (x[0], x[1]))
     return [g for (_, _, g) in scored[:n]]
@@ -76,7 +78,11 @@ def run_analysis(label, transfer, num_show=4, show_augments=True, **pg_kwargs):
         print("  (no solution found)\n")
         return
     best = top_graphs(graphs, n=num_show)
-    print(printable_analysis(analyze_graphs(best, num_keep=2), show_augments=show_augments))
+    print(
+        printable_analysis(
+            analyze_graphs(best, num_keep=2), show_augments=show_augments
+        )
+    )
 
 
 # ----------------------------------------------------------------

@@ -10,6 +10,7 @@ class Augments:
             for aug in augs:
                 p1 = aug(p1)
             return p1
+
         return _composed
 
     @classmethod
