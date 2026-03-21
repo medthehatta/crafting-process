@@ -60,7 +60,7 @@ def top_graphs(graphs, n=5):
     scored = []
     for g in graphs:
         for r in analyze_graph(g, num_keep=1):
-            scored.append((r["leak"], r["total_processes"] - 1, g))
+            scored.append((r.leak, r.total_processes - 1, g))
             break
     scored.sort(key=lambda x: (x[0], x[1]))
     return [g for (_, _, g) in scored[:n]]

@@ -26,11 +26,12 @@ uv add --editable .              # install this package editable (needed once)
 ## Module Map
 
 ```
+__init__.py       Public API surface — re-exports all primary symbols
 process.py        Ingredients (FormalVector), Process, describe_process()
-library.py        DSL parsing, ProcessLibrary, ProcessPredicates
+library.py        DSL parsing, ProcessLibrary, ProcessPredicates, Pred, P
 graph.py          GraphBuilder — process graphs + MILP matrix building
 solver.py         solve_milp(), best_milp_sequence() — scipy MILP wrapper
-orchestration.py  production_graphs(), analyze_graph(), printable_analysis()
+orchestration.py  plan(), production_graphs(), analyze_graph(), PlanResult, ProcessCount
 augment.py        Augments — Process -> Process transform factories
 utils.py          only(), curry re-export
 tests/            pytest suite — function style, no test classes
@@ -158,6 +159,9 @@ don't bleed into the process name value.
 `ProcessPredicates.annotation_matches(key, pred)` — filters library by annotation value;
 `pred` is any callable `value -> bool`. Composes with `and_`/`or_`/`not_` as usual.
 
+For ergonomic predicate use, prefer the `P` namespace and `Pred` wrapper (see
+Library Management below).
+
 ### Augmentation DSL
 
 Augments are `Process -> Process` callables registered with `lib.register_augment(name, fn)`.
@@ -199,6 +203,59 @@ originals + mk3 variants.
 `process_name` in the header sets `proc.process` — used by `skip_processes` in
 `production_graphs`. `ProcessLibrary.mkname()` builds the library key from
 `describe_process(output_names, process)`, disambiguating with a counter if needed.
+
+## Library Management
+
+### `ProcessLibrary` constructor
+
+```python
+ProcessLibrary(recipes=None, text=None, path=None, augments=None)
+```
+
+- `text` — parse DSL text immediately on construction
+- `path` — read and parse a recipe file (accepts a plain string path)
+- `augments` — dict of `{name: fn}` registered before text/path is parsed
+- Raises `ValueError` if both `text` and `path` are given
+- `add_from_text(text)` returns `self` for chaining
+
+```python
+# All equivalent:
+lib = ProcessLibrary(path="recipes.txt", augments={"mk3": mk3_fn})
+lib = ProcessLibrary().add_from_text(text_a).add_from_text(text_b)
+```
+
+### `lib.filtered(pred)` → `ProcessLibrary`
+
+Returns a new library containing only recipes where `pred(process)` is true.
+The augment registry is preserved. `pred` can be any callable or a `Pred`
+built from the `P` namespace.
+
+### `lib | other` → `ProcessLibrary`
+
+Merges two libraries. On name collision the right-hand library wins. Both
+augment registries are merged (right wins).
+
+### Predicate system: `P` and `Pred`
+
+`P` provides named predicate factories. Each returns a `Pred`, which supports
+`&`, `|`, `~` operators for composition:
+
+```python
+from crafting_process import P
+
+mk3_iron = lib.filtered(P.produces("iron") & P.has_augment("mk3"))
+no_furnace = lib.filtered(~P.process_is("furnace"))
+```
+
+Available predicates:
+
+| Factory | Matches |
+|---|---|
+| `P.produces(kind)` | process outputs include `kind` |
+| `P.consumes(kind)` | process inputs include `kind` |
+| `P.process_is(name)` | `proc.process == name` |
+| `P.has_augment(name)` | `name` in `proc.applied_augments` |
+| `P.annotation(key, pred)` | annotation value at `key` satisfies `pred` |
 
 ## MILP Formulation
 
@@ -253,28 +310,47 @@ sufficient set of providers to cover all `input_kinds`.
 - Range is `range(1, min(max_overlap, len(providing))+1)` — `i` iterates over
   provider-subset sizes.
 
-### `analyze_graph(graph, num_keep=4)` → generator of result dicts
+### `plan(library, transfer, *, n=5, num_keep=4, **production_graphs_kwargs)` → `list[PlanResult]`
+
+High-level convenience entry point. Accepts a string or `Ingredients` for
+`transfer`. Runs `production_graphs`, solves MILP on each, ranks by
+`(leak, total_processes)` ascending, and returns the top `n` results as a
+concrete list. All `production_graphs` kwargs (`stop_kinds`, `skip_processes`,
+`only_augments`, etc.) are forwarded.
+
+```python
+import crafting_process as cp
+lib = cp.ProcessLibrary(path="recipes.txt", augments={"mk3": mk3_fn})
+results = cp.plan(lib, "10 computer", n=3, only_augments=["mk3"])
+print(cp.printable_analysis(results))
+```
+
+### `analyze_graph(graph, num_keep=4)` → generator of `PlanResult`
 
 Requires a `"_"` sentinel open_output in the graph (injected by
 `production_graphs`). Uses `_only` to find the sentinel process.
 
-Each yielded dict:
+Each yielded `PlanResult` (frozen dataclass):
+
 ```
-"desired"               Ingredients — what was requested
-"total_processes"       int — sum of all repeat counts INCLUDING the sentinel (sink=1)
-"leak"                  float — worst-case pool imbalance (0.0 = perfectly balanced)
-"transfer"              Ingredients — scaled dangling transfers (open inputs/outputs)
-"inputs"                [(amount, kind)] — raw material requirements; "_" excluded
-"sorted_process_counts" [(count, desc, slug)] — sorted deepest-first by output_depths
-"yield"                 {kind: float} — actual output qty per desired kind (may exceed
-                        requested when mul_outputs causes overproduction)
-"process_augments"      {slug: list[str]} — applied_augments per process slug
+.desired               Ingredients — what was requested
+.total_processes       int — sum of all repeat counts INCLUDING the sentinel (sink=1)
+.leak                  float — worst-case pool imbalance (0.0 = perfectly balanced)
+.transfer              Ingredients — scaled dangling transfers (open inputs/outputs)
+.inputs                [(amount, kind)] — raw material requirements; "_" excluded
+.process_counts        [ProcessCount] — sorted deepest-first by output_depths
+.output_quantities     {kind: float} — actual output qty per desired kind (may exceed
+                       requested when mul_outputs causes overproduction)
+.process_augments      {slug: list[str]} — applied_augments per process slug
 ```
 
-`printable_analysis(aly, show_augments=False)` subtracts 1 from `total_processes`
-for display. With `show_augments=True`, appends `@name` suffixes to process count
-lines. Always prints a `makes:` line showing actual yield; annotates with
-`(want: N)` when yield differs from what was requested.
+`ProcessCount` is a frozen dataclass with fields `count`, `description`, `slug`.
+
+`printable_analysis(aly, show_augments=False)` accepts an iterable of `PlanResult`
+(e.g. `list[PlanResult]` from `plan()`, or a generator from `analyze_graphs`).
+Subtracts 1 from `total_processes` for display. With `show_augments=True`, appends
+`@name` suffixes to process count lines. Always prints a `makes:` line showing
+actual yield; annotates with `(want: N)` when yield differs from what was requested.
 
 ### `batch_milps(graph)` → list of `{leakage, counts}` dicts
 
@@ -305,13 +381,13 @@ Each `counts` entry: `(repeat_count, process.describe(), process_slug)`.
 ## Test Suite Status
 
 ```
-test_utils.py          4  done
-test_process.py       44  done
-test_library.py       91  done
-test_solver.py        17  done
-test_graph.py         49  done  (build_matrix and build_batch_matrix both covered)
-test_augment.py       18  done
-test_orchestration.py 99  done
+test_utils.py            4  done
+test_process.py         44  done
+test_library.py        108  done
+test_solver.py          17  done
+test_graph.py           49  done  (build_matrix and build_batch_matrix both covered)
+test_augment.py         18  done
+test_orchestration.py  107  done
 ```
 
-Total: 322 tests, all passing (`uv run pytest`).
+Total: 347 tests, all passing (`uv run pytest`).
