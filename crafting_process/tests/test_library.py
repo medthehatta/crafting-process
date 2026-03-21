@@ -870,3 +870,153 @@ def test_with_augment_filter_preserves_augments_registry():
     lib = _augmented_lib()
     filtered = lib.with_augment_filter(skip_augments=["mk2"])
     assert filtered._augments is lib._augments
+
+
+# ---------------------------------------------------------------------------
+# ProcessLibrary constructor convenience
+# ---------------------------------------------------------------------------
+
+def test_constructor_text_param():
+    lib = ProcessLibrary(text="1 widget | press:\n2 iron\n")
+    assert any("widget" in n for n in lib.recipes)
+
+
+def test_constructor_path_param(tmp_path):
+    p = tmp_path / "r.txt"
+    p.write_text("1 widget | press:\n2 iron\n")
+    lib = ProcessLibrary(path=str(p))
+    assert any("widget" in n for n in lib.recipes)
+
+
+def test_constructor_raises_if_both_text_and_path(tmp_path):
+    p = tmp_path / "r.txt"
+    p.write_text("1 widget:\n2 iron\n")
+    with pytest.raises(ValueError):
+        ProcessLibrary(text="1 widget:\n2 iron\n", path=str(p))
+
+
+def test_constructor_augments_dict_applied():
+    from crafting_process.augment import Augments
+    lib = ProcessLibrary(
+        augments={"fast": Augments.mul_speed(2)},
+        text="@fast\n\n1 widget | press: duration=1\n2 iron\n",
+    )
+    augmented = [p for p in lib.recipes.values() if p.applied_augments == ["fast"]]
+    assert len(augmented) == 1
+    assert augmented[0].duration == pytest.approx(0.5)
+
+
+# ---------------------------------------------------------------------------
+# filtered()
+# ---------------------------------------------------------------------------
+
+def test_filtered_returns_matching_recipes():
+    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    filtered = lib.filtered(lambda p: "iron" in p.outputs.nonzero_components)
+    assert all("iron" in p.outputs.nonzero_components for p in filtered.recipes.values())
+    assert len(filtered.recipes) == 1
+
+
+def test_filtered_preserves_augment_registry():
+    from crafting_process.augment import Augments
+    lib = ProcessLibrary()
+    lib.register_augment("fast", Augments.mul_speed(2))
+    lib.add_from_text("1 widget | press: duration=1\n2 iron\n")
+    filtered = lib.filtered(lambda p: True)
+    assert "fast" in filtered._augments
+
+
+def test_filtered_with_pred_operators():
+    from crafting_process.library import P
+    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    filtered = lib.filtered(P.produces("iron") | P.produces("widget"))
+    assert len(filtered.recipes) == 2
+
+
+# ---------------------------------------------------------------------------
+# __or__ merge
+# ---------------------------------------------------------------------------
+
+def test_merge_combines_recipes():
+    lib_a = ProcessLibrary(text="1 iron | smelt:\n2 ore\n")
+    lib_b = ProcessLibrary(text="1 widget | press:\n2 iron\n")
+    merged = lib_a | lib_b
+    assert any("iron" in n for n in merged.recipes)
+    assert any("widget" in n for n in merged.recipes)
+
+
+def test_merge_right_wins_on_collision():
+    lib_a = ProcessLibrary(text="1 iron | smelt:\n2 ore\n")
+    lib_b = ProcessLibrary(text="1 iron | smelt:\n5 ore\n")
+    merged = lib_a | lib_b
+    iron_procs = [p for p in merged.recipes.values() if "iron" in p.outputs.nonzero_components]
+    assert any(p.inputs["ore"] == 5 for p in iron_procs)
+
+
+def test_merge_preserves_augment_registries():
+    from crafting_process.augment import Augments
+    lib_a = ProcessLibrary()
+    lib_a.register_augment("fast", Augments.mul_speed(2))
+    lib_b = ProcessLibrary()
+    lib_b.register_augment("slow", Augments.mul_speed(0.5))
+    merged = lib_a | lib_b
+    assert "fast" in merged._augments
+    assert "slow" in merged._augments
+
+
+# ---------------------------------------------------------------------------
+# P predicate namespace
+# ---------------------------------------------------------------------------
+
+def test_P_produces():
+    from crafting_process.library import P
+    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    filtered = lib.filtered(P.produces("iron"))
+    assert len(filtered.recipes) == 1
+
+
+def test_P_consumes():
+    from crafting_process.library import P
+    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    filtered = lib.filtered(P.consumes("iron"))
+    assert len(filtered.recipes) == 1
+
+
+def test_P_process_is():
+    from crafting_process.library import P
+    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    filtered = lib.filtered(P.process_is("smelt"))
+    assert len(filtered.recipes) == 1
+
+
+def test_P_has_augment():
+    from crafting_process.library import P
+    from crafting_process.augment import Augments
+    lib = ProcessLibrary(
+        augments={"mk2": Augments.mul_speed(1.5)},
+        text="@mk2\n\n1 widget | press: duration=1\n2 iron\n",
+    )
+    filtered = lib.filtered(P.has_augment("mk2"))
+    assert all("mk2" in p.applied_augments for p in filtered.recipes.values())
+
+
+def test_P_and_operator():
+    from crafting_process.library import P
+    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    pred = P.produces("iron") & P.consumes("ore")
+    filtered = lib.filtered(pred)
+    assert len(filtered.recipes) == 1
+
+
+def test_P_or_operator():
+    from crafting_process.library import P
+    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    filtered = lib.filtered(P.produces("iron") | P.produces("widget"))
+    assert len(filtered.recipes) == 2
+
+
+def test_P_invert_operator():
+    from crafting_process.library import P
+    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    filtered = lib.filtered(~P.produces("iron"))
+    assert all("iron" not in p.outputs.nonzero_components for p in filtered.recipes.values())

@@ -206,57 +206,57 @@ def _first_result(library, transfer_str):
 
 def test_analyze_graph_desired_matches_requested(linear_library):
     result = _first_result(linear_library, "1 widget")
-    assert result["desired"]["widget"] == 1
+    assert result.desired["widget"] == 1
 
 
 def test_analyze_graph_leak_is_float(linear_library):
-    assert isinstance(_first_result(linear_library, "1 widget")["leak"], float)
+    assert isinstance(_first_result(linear_library, "1 widget").leak, float)
 
 
 def test_analyze_graph_leak_is_zero_for_balanced(linear_library):
-    assert _first_result(linear_library, "1 widget")["leak"] == pytest.approx(0.0)
+    assert _first_result(linear_library, "1 widget").leak == pytest.approx(0.0)
 
 
 def test_analyze_graph_total_processes_includes_sentinel(linear_library):
     # smelter=1, press=1, sink=1 → total_processes=3 (sentinel counted)
-    assert _first_result(linear_library, "1 widget")["total_processes"] == 3
+    assert _first_result(linear_library, "1 widget").total_processes == 3
 
 
 def test_analyze_graph_inputs_lists_ore(linear_library):
     result = _first_result(linear_library, "1 widget")
-    kinds = [kind for (_, kind) in result["inputs"]]
+    kinds = [kind for (_, kind) in result.inputs]
     assert "ore" in kinds
 
 
 def test_analyze_graph_inputs_excludes_sentinel(linear_library):
     result = _first_result(linear_library, "1 widget")
-    kinds = [kind for (_, kind) in result["inputs"]]
+    kinds = [kind for (_, kind) in result.inputs]
     assert "_" not in kinds
 
 
 def test_analyze_graph_ore_amount_correct(linear_library):
     result = _first_result(linear_library, "1 widget")
-    ore_entries = [(amt, kind) for (amt, kind) in result["inputs"] if kind == "ore"]
+    ore_entries = [(amt, kind) for (amt, kind) in result.inputs if kind == "ore"]
     assert ore_entries == [(3, "ore")]
 
 
 def test_analyze_graph_sorted_process_counts_is_list(linear_library):
     result = _first_result(linear_library, "1 widget")
-    assert isinstance(result["sorted_process_counts"], list)
+    assert isinstance(result.process_counts, list)
 
 
 def test_analyze_graph_sorted_process_counts_are_triples(linear_library):
     result = _first_result(linear_library, "1 widget")
-    for count, desc, name in result["sorted_process_counts"]:
-        assert isinstance(count, int)
-        assert isinstance(desc, str)
-        assert isinstance(name, str)
+    for pc in result.process_counts:
+        assert isinstance(pc.count, int)
+        assert isinstance(pc.description, str)
+        assert isinstance(pc.slug, str)
 
 
 def test_analyze_graph_sorted_process_counts_deepest_first(linear_library):
     # smelter is deeper (upstream) than press → its entry comes first
     result = _first_result(linear_library, "1 widget")
-    descs = [desc for (_, desc, _) in result["sorted_process_counts"]]
+    descs = [pc.description for pc in result.process_counts]
     iron_idx = next(i for i, d in enumerate(descs) if "iron" in d)
     widget_idx = next(i for i, d in enumerate(descs) if "widget" in d)
     assert iron_idx < widget_idx
@@ -264,13 +264,13 @@ def test_analyze_graph_sorted_process_counts_deepest_first(linear_library):
 
 def test_analyze_graph_yield_present(linear_library):
     result = _first_result(linear_library, "1 widget")
-    assert "yield" in result
+    assert result.output_quantities is not None
 
 
 def test_analyze_graph_yield_matches_request_when_balanced(linear_library):
     # 1x press → 1 widget per run; no leak on balanced graph
     result = _first_result(linear_library, "1 widget")
-    assert result["yield"]["widget"] == pytest.approx(1.0)
+    assert result.output_quantities["widget"] == pytest.approx(1.0)
 
 
 def test_analyze_graph_yield_reflects_mul_outputs():
@@ -283,17 +283,17 @@ def test_analyze_graph_yield_reflects_mul_outputs():
     g = next(production_graphs(lib, Ingredients.parse("1 widget"),
                                 skip_augments=["double"]))
     r = next(analyze_graph(g))
-    assert r["yield"]["widget"] == pytest.approx(1.0)
+    assert r.output_quantities["widget"] == pytest.approx(1.0)
 
 
 def test_analyze_graph_process_augments_present(linear_library):
     result = _first_result(linear_library, "1 widget")
-    assert "process_augments" in result
+    assert result.process_augments is not None
 
 
 def test_analyze_graph_process_augments_originals_empty(linear_library):
     result = _first_result(linear_library, "1 widget")
-    for slug, augs in result["process_augments"].items():
+    for slug, augs in result.process_augments.items():
         assert augs == []
 
 
@@ -882,7 +882,7 @@ def test_combo_provider_analyze_graph_runs(combo_provider_library):
     graphs = list(production_graphs(combo_provider_library, Ingredients.parse("1 widget")))
     results = list(analyze_graph(graphs[0]))
     assert len(results) >= 1
-    assert results[0]["leak"] == 0.0
+    assert results[0].leak == 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -948,13 +948,13 @@ def test_shared_intermediate_analyze_graph_runs(shared_intermediate_library):
     graphs = list(production_graphs(shared_intermediate_library, Ingredients.parse("1 final")))
     results = list(analyze_graph(graphs[0]))
     assert len(results) >= 1
-    assert results[0]["total_processes"] == 5  # make_x, make_y, make_z, combine, sink "_"
+    assert results[0].total_processes == 5  # make_x, make_y, make_z, combine, sink "_"
 
 
 def test_shared_intermediate_analyze_graph_zero_leak(shared_intermediate_library):
     graphs = list(production_graphs(shared_intermediate_library, Ingredients.parse("1 final")))
     results = list(analyze_graph(graphs[0]))
-    assert results[0]["leak"] == 0.0
+    assert results[0].leak == 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -1098,3 +1098,62 @@ def test_no_augment_filter_sees_all_variants(augmented_iron_library):
         Ingredients.parse("1 widget"),
     ))
     assert len(graphs) == 3
+
+# ---------------------------------------------------------------------------
+# PlanResult / ProcessCount dataclasses
+# ---------------------------------------------------------------------------
+
+def test_analyze_graph_returns_plan_result(linear_library):
+    from crafting_process.orchestration import PlanResult
+    result = _first_result(linear_library, "1 widget")
+    assert isinstance(result, PlanResult)
+
+
+def test_plan_result_process_counts_are_process_count(linear_library):
+    from crafting_process.orchestration import ProcessCount
+    result = _first_result(linear_library, "1 widget")
+    assert all(isinstance(pc, ProcessCount) for pc in result.process_counts)
+
+
+def test_process_count_fields(linear_library):
+    result = _first_result(linear_library, "1 widget")
+    pc = result.process_counts[0]
+    assert hasattr(pc, "count")
+    assert hasattr(pc, "description")
+    assert hasattr(pc, "slug")
+
+
+# ---------------------------------------------------------------------------
+# plan()
+# ---------------------------------------------------------------------------
+
+def test_plan_returns_list(linear_library):
+    from crafting_process.orchestration import plan, PlanResult
+    results = plan(linear_library, "1 widget")
+    assert isinstance(results, list)
+    assert all(isinstance(r, PlanResult) for r in results)
+
+
+def test_plan_accepts_string_transfer(linear_library):
+    from crafting_process.orchestration import plan
+    results = plan(linear_library, "1 widget")
+    assert len(results) >= 1
+
+
+def test_plan_accepts_ingredients_transfer(linear_library):
+    from crafting_process.orchestration import plan
+    results = plan(linear_library, Ingredients.parse("1 widget"))
+    assert len(results) >= 1
+
+
+def test_plan_n_limits_results(linear_library):
+    from crafting_process.orchestration import plan
+    results = plan(linear_library, "1 widget", n=1)
+    assert len(results) <= 1
+
+
+def test_plan_sorted_by_leak_then_total_processes(linear_library):
+    from crafting_process.orchestration import plan
+    results = plan(linear_library, "1 widget", n=10)
+    for a, b in zip(results, results[1:]):
+        assert (a.leak, a.total_processes) <= (b.leak, b.total_processes)

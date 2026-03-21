@@ -231,6 +231,49 @@ class ProcessPredicates(Predicates):
         return v is not None and pred(v)
 
 
+class Pred:
+    """A composable process predicate. Supports &, |, ~ operators."""
+
+    def __init__(self, fn):
+        self._fn = fn
+
+    def __call__(self, process):
+        return self._fn(process)
+
+    def __and__(self, other):
+        return Pred(lambda p: self(p) and other(p))
+
+    def __or__(self, other):
+        return Pred(lambda p: self(p) or other(p))
+
+    def __invert__(self):
+        return Pred(lambda p: not self(p))
+
+
+class P:
+    """Named process predicates, each returning a composable Pred."""
+
+    @staticmethod
+    def produces(kind):
+        return Pred(ProcessPredicates.outputs_part(kind))
+
+    @staticmethod
+    def consumes(kind):
+        return Pred(ProcessPredicates.requires_part(kind))
+
+    @staticmethod
+    def process_is(name):
+        return Pred(ProcessPredicates.uses_process(name))
+
+    @staticmethod
+    def has_augment(name):
+        return Pred(lambda p: name in p.applied_augments)
+
+    @staticmethod
+    def annotation(key, pred):
+        return Pred(ProcessPredicates.annotation_matches(key, pred))
+
+
 class GraphPredicates(Predicates):
 
     @classmethod
@@ -364,10 +407,20 @@ def parse_augments(lines):
 
 class ProcessLibrary:
 
-    def __init__(self, recipes=None):
+    def __init__(self, recipes=None, text=None, path=None, augments=None):
+        if text is not None and path is not None:
+            raise ValueError("Provide either text or path, not both")
         self.recipes = recipes or {}
         self.names = set(recipes.keys()) if recipes else set()
         self._augments = {}
+        if augments:
+            for name, fn in augments.items():
+                self.register_augment(name, fn)
+        if path is not None:
+            with open(path) as f:
+                self.add_from_text(f.read())
+        elif text is not None:
+            self.add_from_text(text)
 
     #
     # Add augments
@@ -454,5 +507,23 @@ class ProcessLibrary:
         filtered = {n: p for (n, p) in self.recipes.items() if _keep(p)}
         result = ProcessLibrary(recipes=filtered)
         result._augments = self._augments
+        return result
+
+    def filtered(self, pred):
+        """Return a new library containing only recipes where pred(process) is true.
+
+        pred can be any callable or a Pred built from the P namespace.
+        The augment registry is preserved on the returned library.
+        """
+        matching = {n: p for (n, p) in self.recipes.items() if pred(p)}
+        result = ProcessLibrary(recipes=matching)
+        result._augments = self._augments
+        return result
+
+    def __or__(self, other):
+        """Merge two libraries. On name collision the right-hand library wins."""
+        merged = {**self.recipes, **other.recipes}
+        result = ProcessLibrary(recipes=merged)
+        result._augments = {**self._augments, **other._augments}
         return result
 
