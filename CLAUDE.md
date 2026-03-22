@@ -10,6 +10,10 @@ map, data model, DSL syntax, library management, orchestration flow, MILP
 formulation, key conventions, test suite status, ergonomics changelog, and feature
 roadmap.
 
+## Memory
+
+Project memory lives in `.memory/` (hidden to avoid interfering with Python package discovery). Read and write it there.
+
 ## Quick start
 
 ```bash
