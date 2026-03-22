@@ -90,3 +90,34 @@
 
 1 rocket_part | rocket_assembly: duration=3 [tier=5 | category=assembly]
 3 processor + 10 steel + 2 plastic
+
+@-
+
+# ----------------------------------------------------------------
+# Syntax demo 1 — single-line stacking (no blank lines needed)
+#
+# Ore-washing is a family of short one-input recipes.  The inline
+# "output = input" form fits on one line and stacking them without
+# blank separators keeps the section compact.
+# ----------------------------------------------------------------
+
+1 clean_iron_ore = 1 ore_iron + 1 water
+1 clean_copper_ore = 1 ore_copper + 1 water
+1 clean_silicon_ore = 1 ore_silicon + 1 water
+
+
+# ----------------------------------------------------------------
+# Syntax demo 2 — multi-line ingredient list (one per line)
+#
+# The power_armor recipe has many ingredients; listing each on its
+# own line makes the bill-of-materials easy to scan and diff.
+# ----------------------------------------------------------------
+
+@assembler_mk3
+
+1 power_armor | power_armor_assembly: duration=15 [tier=5 | category=assembly]
+10 steel
+5 solar_panel
+3 battery
+2 processor
+1 advanced_circuit

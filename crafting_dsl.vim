@@ -6,6 +6,7 @@
 "
 "   @augment_name          ← augment block line
 "   @aug1 @aug2            ← composed augments
+"   @-                     ← cancel / reset the active augment block
 "
 "   foo = 2 bar            ← minimal inline form (no process name)
 "   out | name: = inputs   ← inline inputs on header line
@@ -30,7 +31,7 @@ syn match craftingSeparator "^---\s*$"
 " Matches @token anywhere — standalone augment lines, inline in headers,
 " or inside attribute lists.
 
-syn match craftingAugment "@\w\+"
+syn match craftingAugment "@\(-\|\w\+\)"
 
 
 " ── Annotation blocks: [key=val | key2=val2] ────────────────────────────────

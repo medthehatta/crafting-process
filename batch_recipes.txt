@@ -78,3 +78,35 @@
 
 1 copper_amulet | craft amulet [tier=3 | profession=jewelcrafting]
 4 copper_ring + 1 iron_buckle
+
+@-
+
+# ----------------------------------------------------------------
+# Syntax demo 1 — single-line stacking (no blank lines needed)
+#
+# Simple gem-cutting recipes have one input each, so the inline
+# "output = input" form is natural.  Stacking them without blank
+# separators keeps the file compact.
+# ----------------------------------------------------------------
+
+1 cut_jade = 2 raw_jade
+1 cut_amber = 2 raw_amber
+1 cut_onyx = 2 raw_onyx
+1 cut_sapphire = 3 raw_sapphire
+
+
+# ----------------------------------------------------------------
+# Syntax demo 2 — multi-line ingredient list (one per line)
+#
+# The Runed Plate Chest has many ingredients.  Listing them one
+# per line is easier to scan and diff than a long "+ "-joined sum.
+# ----------------------------------------------------------------
+
+1 runed_plate_chest | craft plate chest [tier=4 | profession=blacksmithing]
+12 iron_bar
+4 grinding_stone
+2 iron_buckle
+3 linen_bolt
+1 copper_ring
+
+cut_sapphire = 30 sapphire_shard

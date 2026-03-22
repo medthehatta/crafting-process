@@ -172,9 +172,12 @@ def test_parse_process_raises_on_empty():
         parse_process("# just a comment\n\n")
 
 
-def test_parse_process_raises_on_too_many_lines():
-    with pytest.raises(ValueError, match="too many"):
-        parse_process("widget\n3 iron\nextra line")
+def test_parse_process_multiline_ingredients():
+    # 3+ lines: header + one ingredient per line, joined with " + "
+    result = parse_process("widget | stamping:\nfoo\n2 bar\n3 other")
+    assert result["outputs"] == "widget"
+    assert result["inputs"] == "foo + 2 bar + 3 other"
+    assert result["process"] == "stamping"
 
 
 # ---------------------------------------------------------------------------
@@ -221,6 +224,119 @@ def test_specs_from_lines_no_trailing_blank_required():
     lines = ["widget = 3 iron"]
     specs = list(specs_from_lines(lines))
     assert len(specs) == 1
+
+
+def test_specs_from_lines_single_line_stacking_no_blank():
+    # Single-line recipes (with =) can be stacked without blank separators
+    lines = [
+        "widget = 3 iron",
+        "gear = 2 widget",
+        "plate = 1 ore",
+    ]
+    specs = list(specs_from_lines(lines))
+    assert len(specs) == 3
+    assert specs[0]["outputs"] == "widget"
+    assert specs[0]["inputs"] == "3 iron"
+    assert specs[1]["outputs"] == "gear"
+    assert specs[1]["inputs"] == "2 widget"
+    assert specs[2]["outputs"] == "plate"
+    assert specs[2]["inputs"] == "1 ore"
+
+
+def test_specs_from_lines_single_line_stacking_pipe_header():
+    # Header lines with | also trigger early yield of a preceding single-line recipe
+    lines = [
+        "widget = 3 iron",
+        "gear | machining: = 2 widget",
+    ]
+    specs = list(specs_from_lines(lines))
+    assert len(specs) == 2
+    assert specs[0]["outputs"] == "widget"
+    assert specs[1]["process"] == "machining"
+
+
+def test_specs_from_lines_multiline_ingredients():
+    # Header + one ingredient per line (no blank or + needed)
+    lines = [
+        "widget | stamping: duration=4",
+        "3 iron",
+        "1 copper",
+        "2 coal",
+    ]
+    specs = list(specs_from_lines(lines))
+    assert len(specs) == 1
+    assert specs[0]["outputs"] == "widget"
+    assert specs[0]["inputs"] == "3 iron + 1 copper + 2 coal"
+
+
+def test_specs_from_lines_multiline_ingredients_then_new_recipe():
+    # Multi-line ingredients terminated by the next recipe header (no blank line needed)
+    lines = [
+        "widget | stamping:",
+        "3 iron",
+        "1 copper",
+        "gear | machining:",
+        "2 widget",
+    ]
+    specs = list(specs_from_lines(lines))
+    assert len(specs) == 2
+    assert specs[0]["inputs"] == "3 iron + 1 copper"
+    assert specs[1]["outputs"] == "gear"
+    assert specs[1]["inputs"] == "2 widget"
+
+
+def test_specs_from_lines_multiline_ingredients_blank_terminated():
+    # Multi-line ingredients also terminate on blank line (existing behaviour preserved)
+    lines = [
+        "widget | stamping:",
+        "3 iron",
+        "1 copper",
+        "",
+        "gear = 2 widget",
+    ]
+    specs = list(specs_from_lines(lines))
+    assert len(specs) == 2
+    assert specs[0]["inputs"] == "3 iron + 1 copper"
+    assert specs[1]["outputs"] == "gear"
+
+
+def test_specs_from_lines_at_dash_clears_augment_block():
+    # @- alone resets the active augment block; following recipes have no augments
+    lines = [
+        "@mk1",
+        "widget = 3 iron",
+        "",
+        "@-",
+        "gear = 2 widget",
+    ]
+    specs = list(specs_from_lines(lines))
+    assert specs[0]["augment_block"] == [["mk1"]]
+    assert specs[1]["augment_block"] == []
+
+
+def test_specs_from_lines_at_dash_mid_section_resets():
+    # @- resets even when encountered inside an augment section (before any recipe)
+    lines = [
+        "@mk1",
+        "@-",
+        "widget = 3 iron",
+    ]
+    specs = list(specs_from_lines(lines))
+    assert specs[0]["augment_block"] == []
+
+
+def test_specs_from_lines_at_dash_with_following_token_starts_fresh():
+    # @- combined with another token on the same line: reset then begin new block
+    lines = [
+        "@mk1",
+        "widget = 3 iron",
+        "",
+        "@- @mk2",
+        "gear = 2 widget",
+    ]
+    specs = list(specs_from_lines(lines))
+    assert specs[0]["augment_block"] == [["mk1"]]
+    assert specs[1]["augment_block"] == [["mk2"]]
 
 
 # ---------------------------------------------------------------------------

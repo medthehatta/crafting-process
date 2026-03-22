@@ -23,13 +23,23 @@ def parse_process(s):
             "inputs": lines[1],
         }
     else:
-        raise ValueError(f"Found too many lines in (next line):\n{s}")
+        # 3+ lines: header followed by one ingredient per line
+        inputs = " + ".join(lines[1:])
+        return {
+            **_parse_process_header(lines[0]),
+            "inputs": inputs,
+        }
 
 
 def _is_augment_line(stripped):
     """Return True if every token on the line starts with '@'."""
     tokens = stripped.split()
     return bool(tokens) and all(t.startswith("@") for t in tokens)
+
+
+def _is_header_line(stripped):
+    """Return True if this line looks like a recipe header (contains = or |)."""
+    return "=" in stripped or "|" in stripped
 
 
 def _parse_annotation_block(s):
@@ -307,14 +317,27 @@ def specs_from_lines(lines):
                 found = False
 
         elif _is_augment_line(stripped):
-            if not in_augment_section:
-                # New @-block after recipes: reset
+            tokens = stripped.split()
+            if not in_augment_section or "@-" in tokens:
+                # New @-block after recipes, or explicit @- sentinel: reset
                 augment_block = []
                 in_augment_section = True
-            augment_block.append([t.lstrip("@") for t in stripped.split()])
+            real_tokens = [t for t in tokens if t != "@-"]
+            if real_tokens:
+                augment_block.append([t.lstrip("@") for t in real_tokens])
 
         else:
             in_augment_section = False
+            if found and _is_header_line(stripped):
+                # New recipe header while one is already buffered — yield
+                # current recipe first.  This lets single-line recipes stack
+                # without a blank separator, and terminates a multi-line
+                # ingredient block when the next header arrives.
+                spec = parse_process(buf)
+                spec["augment_block"] = list(augment_block)
+                yield spec
+                buf = ""
+                found = False
             buf += line + "\n"
             found = True
 
