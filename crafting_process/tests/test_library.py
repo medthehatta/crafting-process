@@ -127,6 +127,12 @@ def test_library_process_name_with_spaces_lookup():
     assert len(results) == 1
 
 
+def test_filter_returns_library():
+    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    result = lib.filter(lambda p: "iron" in p.outputs.nonzero_components)
+    assert isinstance(result, ProcessLibrary)
+
+
 def test_header_attribute_with_digit_in_name():
     # Regression: the 0-0 typo fix — attribute names with digits should parse
     result = _parse_process_header("widget | stamping: tier2=advanced")
@@ -508,7 +514,7 @@ def test_using_returns_recipes_with_that_process_name(library):
 def test_filter_with_custom_predicate(library):
     # Recipes whose inputs include iron
     results = library.filter(ProcessPredicates.requires_part("iron"))
-    names = [n for (n, _) in results]
+    names = list(results.recipes.keys())
     assert "widget via stamping" in names
     assert "widget via forging" in names
     assert "gear via machining" not in names
@@ -733,8 +739,8 @@ def test_lib_filter_by_annotation(library):
         2 iron
     """)
     tier2 = lib.filter(ProcessPredicates.annotation_matches("tier", lambda v: v == 2))
-    assert len(tier2) == 2
-    assert all(proc.annotations["tier"] == 2 for (_, proc) in tier2)
+    assert len(tier2.recipes) == 2
+    assert all(proc.annotations["tier"] == 2 for proc in tier2.recipes.values())
 
 
 def test_lib_filter_annotation_and_output():
@@ -754,9 +760,10 @@ def test_lib_filter_annotation_and_output():
         ProcessPredicates.outputs_part("iron"),
     )
     results = lib.filter(pred)
-    assert len(results) == 1
-    assert results[0][1].annotations["tier"] == 2
-    assert results[0][1].outputs["iron"] == 2
+    assert len(results.recipes) == 1
+    proc = next(iter(results.recipes.values()))
+    assert proc.annotations["tier"] == 2
+    assert proc.outputs["iron"] == 2
 
 
 # ---------------------------------------------------------------------------
@@ -800,7 +807,7 @@ def test_block_augment_original_always_added():
     """)
     # original + 1 augmented variant
     iron_entries = lib.filter(ProcessPredicates.outputs_part("iron"))
-    assert len(iron_entries) == 2
+    assert len(iron_entries.recipes) == 2
 
 
 def test_block_augment_creates_augmented_entry():
@@ -829,7 +836,7 @@ def test_block_augment_multiple_lines_yields_one_variant_each():
     """)
     # original + mk2 variant + mk3 variant
     iron_entries = lib.filter(ProcessPredicates.outputs_part("iron"))
-    assert len(iron_entries) == 3
+    assert len(iron_entries.recipes) == 3
 
 
 def test_block_augment_multi_token_line_composed():
@@ -876,12 +883,12 @@ def test_block_augment_reset_after_recipes():
     # smelt: original + mk2; press: original + mk3
     iron_entries = lib.filter(ProcessPredicates.outputs_part("iron"))
     widget_entries = lib.filter(ProcessPredicates.outputs_part("widget"))
-    assert len(iron_entries) == 2
-    assert len(widget_entries) == 2
-    assert any("@mk2" in n for (n, _) in iron_entries)
-    assert any("@mk3" in n for (n, _) in widget_entries)
+    assert len(iron_entries.recipes) == 2
+    assert len(widget_entries.recipes) == 2
+    assert any("@mk2" in n for n in iron_entries.recipes)
+    assert any("@mk3" in n for n in widget_entries.recipes)
     # smelt should NOT have an @mk3 variant
-    assert not any("@mk3" in n for (n, _) in iron_entries)
+    assert not any("@mk3" in n for n in iron_entries.recipes)
 
 
 def test_block_augment_applies_to_multiple_recipes():
@@ -897,8 +904,8 @@ def test_block_augment_applies_to_multiple_recipes():
     """)
     iron_entries = lib.filter(ProcessPredicates.outputs_part("iron"))
     widget_entries = lib.filter(ProcessPredicates.outputs_part("widget"))
-    assert len(iron_entries) == 2
-    assert len(widget_entries) == 2
+    assert len(iron_entries.recipes) == 2
+    assert len(widget_entries.recipes) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -914,7 +921,7 @@ def test_inline_augment_creates_augmented_entry():
     """)
     # original + 1 inline-augmented variant
     iron_entries = lib.filter(ProcessPredicates.outputs_part("iron"))
-    assert len(iron_entries) == 2
+    assert len(iron_entries.recipes) == 2
     augmented = next(p for p in lib.recipes.values() if p.applied_augments)
     assert augmented.duration == pytest.approx(2.0)
 
@@ -929,7 +936,7 @@ def test_inline_augment_replaces_block():
     """)
     # block is @mk3 but recipe has inline @mk2 — inline wins
     iron_entries = lib.filter(ProcessPredicates.outputs_part("iron"))
-    assert len(iron_entries) == 2  # original + mk2 only, not mk3
+    assert len(iron_entries.recipes) == 2  # original + mk2 only, not mk3
     augmented = next(p for p in lib.recipes.values() if p.applied_augments)
     assert "mk2" in augmented.applied_augments
     assert "mk3" not in augmented.applied_augments

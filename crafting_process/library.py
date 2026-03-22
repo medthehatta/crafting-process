@@ -499,17 +499,17 @@ class ProcessLibrary:
     # Lookup
     #
 
-    def filter(self, pred):
+    def _filter_items(self, pred):
         return [(n, r) for (n, r) in self.recipes.items() if pred(r)]
 
     def producing(self, resource):
-        return self.filter(ProcessPredicates.outputs_part(resource))
+        return self._filter_items(ProcessPredicates.outputs_part(resource))
 
     def consuming(self, resource):
-        return self.filter(ProcessPredicates.requires_part(resource))
+        return self._filter_items(ProcessPredicates.requires_part(resource))
 
     def using(self, process):
-        return self.filter(ProcessPredicates.uses_process(process))
+        return self._filter_items(ProcessPredicates.uses_process(process))
 
     def with_augment_filter(self, skip_augments=None, only_augments=None):
         skip_set = set(skip_augments or [])
@@ -523,12 +523,12 @@ class ProcessLibrary:
                 return False
             return True
 
-        filtered = {n: p for (n, p) in self.recipes.items() if _keep(p)}
-        result = ProcessLibrary(recipes=filtered)
+        matching = {n: p for (n, p) in self.recipes.items() if _keep(p)}
+        result = ProcessLibrary(recipes=matching)
         result._augments = self._augments
         return result
 
-    def filtered(self, pred):
+    def filter(self, pred):
         """Return a new library containing only recipes where pred(process) is true.
 
         pred can be any callable or a Pred built from the P namespace.
@@ -538,6 +538,9 @@ class ProcessLibrary:
         result = ProcessLibrary(recipes=matching)
         result._augments = self._augments
         return result
+
+    # Backwards-compatible alias
+    filtered = filter
 
     def __or__(self, other):
         """Merge two libraries. On name collision the right-hand library wins."""
