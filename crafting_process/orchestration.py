@@ -31,7 +31,7 @@ class PlanResult:
     process_augments: dict
 
 
-def plan(library, transfer, *, n=5, num_keep=4, **production_graphs_kwargs):
+def plan(library, transfer, *, n=100, num_keep=100, **production_graphs_kwargs):
     """Run the full pipeline and return the top n PlanResults.
 
     transfer can be a string ("10 iron plate") or an Ingredients instance.
