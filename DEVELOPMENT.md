@@ -127,8 +127,8 @@ Process
   .inputs:            Ingredients
   .duration:          float | None        (None = batch-only)
   .process:           str | None          (process type name — metadata, used by skip_processes)
-  .annotations:       dict[str, int|float|str]  (freeform metadata; empty dict by default)
-  .applied_augments:  list[str]           (augment names applied in order; [] for originals)
+  .annotations       dict[str, int|float|str]  (freeform metadata; empty dict by default)
+  .applied_augments  list[str]           (augment names applied in order; [] for originals)
   .transfer        = outputs - inputs
   .transfer_rate   = transfer / duration  (raises if no duration)
   .transfer_quantity(batch=False) dispatches to rate or raw transfer
@@ -190,35 +190,40 @@ currently reads it.
 
 ```
 # Two-line (header + inputs):
-some output | process name: duration=1
+some output | process name duration=1
 2 some input + 3 another input
 
 # Process names may contain spaces — no underscores required.
 # "smelt iron" and "smelt_iron" are different names; pick one convention per file.
 
 # Inline inputs (= on header line):
-another output | different process: = another input + 6 input3
+another output | different process = another input + 6 input3
 
 # Multiple outputs:
-2 iron + 1 slag | smelt: = 3 ore
+2 iron + 1 slag | smelt = 3 ore
 
 # Minimal (no process name, no attributes):
 foo = 2 bar
 
 # Attribute parsing: key=value pairs after |; numeric values parsed as numbers
-widget | stamping: duration=4 | tier=2
+widget | stamping duration=4 | tier=2
 
 # Freeform annotations: [key=val | key2=val2] bracket block, after initializer params
 # Values: int/float auto-detected via JSON; strings as fallback; bare true/false stay as str
-2 iron | smelt: duration=2 [tier=2 | energy=150]
-1 widget | assemble: [assembler=mk2 | tier=2] = 2 iron + 1 copper
+2 iron | smelt duration=2 [tier=2 | energy=150]
+1 widget | assemble [assembler=mk2 | tier=2] = 2 iron + 1 copper
 ```
 
 **Parsing order gotcha**: the `[...]` annotation block is extracted from the header
 string *before* the outer `|` split, because `|` inside brackets would otherwise be
 consumed as a segment separator. Inline `@` tokens are stripped from `attributes_raw`
-*after* the `|` split but *before* the `process=name:` substitution regex, so they
+*after* the `|` split but *before* the process-name prefix is identified, so they
 don't bleed into the process name value.
+
+**Process name detection**: the process name is the leading text in the attribute
+section (after `|`) that precedes the first `key=` pair. No special delimiter is
+required — `| iron smelting duration=3` and `| iron smelting` are both valid.
+A colon may appear freely within a process name (e.g. `| smelting: high temp`).
 
 `ProcessPredicates.annotation_matches(key, pred)` — filters library by annotation value;
 `pred` is any callable `value -> bool`. Composes with `and_`/`or_`/`not_` as usual.
@@ -239,17 +244,17 @@ Augments are `Process -> Process` callables registered with `lib.register_augmen
 @assembler_mk2
 @assembler_mk3 @speed_mod    ← multiple on one line are composed left-to-right
 
-2 iron | smelt: duration=4
+2 iron | smelt duration=4
 3 ore
 
 # New @-block after recipes resets; only @prod applies to press
 @prod
 
-1 widget | press: duration=2
+1 widget | press duration=2
 2 iron
 
 # Inline @-augment on a recipe overrides the current block for that recipe only
-1 gear | mill: @assembler_mk2 duration=3
+1 gear | mill @assembler_mk2 duration=3
 4 iron
 ```
 
@@ -301,10 +306,10 @@ built from the `P` namespace.
 Merges two libraries. On name collision the right-hand library wins. Both
 augment registries are merged (right wins).
 
-### Predicate system: `P` and `Pred`
+### Predicate system `P` and `Pred`
 
 `P` provides named predicate factories. Each returns a `Pred`, which supports
-`&`, `|`, `~` operators for composition:
+`&`, `|`, `~` operators for composition
 
 ```python
 from crafting_process import P
@@ -342,7 +347,7 @@ perfectly balanced integer solution. Infeasible matrices yield an empty sequence
 
 `solve_milp` upper-bounds each `x` at `max(10_000, max(|M|) × 10)` so that
 recipes with large coefficients (e.g. currency conversion chains like
-`10000 c | copper_to_gold: = 1 g` combined with `1877900 c` AH prices) are never
+`10000 c | copper_to_gold = 1 g` combined with `1877900 c` AH prices) are never
 artificially made infeasible. A fixed `max_repeat` cap caused silent infeasibility
 for such chains — do not reintroduce it.
 

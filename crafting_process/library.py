@@ -132,9 +132,17 @@ def _parse_process_header(s):
     # end of line.
     # foo1=some data foo2=other foo3=8
     #
-    # There is syntactic sugar though, and we expand that
-    # first.
-    attributes_raw = re.sub(r"^\s*(.+):", r"process=\1", attributes_raw)
+    # If the attribute section starts with text that isn't a key=value pair,
+    # that leading text is the process name.  The colon carries no special
+    # meaning here — it is part of the name if present.
+    first_key = re.search(r"[A-Za-z_][A-Za-z_0-9]*=", attributes_raw)
+    if first_key and first_key.start() > 0:
+        process_name = attributes_raw[: first_key.start()].strip()
+        attributes_raw = attributes_raw[first_key.start() :]
+        if process_name:
+            attributes_raw = "process=" + process_name + " " + attributes_raw
+    elif not first_key and attributes_raw.strip():
+        attributes_raw = "process=" + attributes_raw.strip()
     keys = [
         (m.group(1), m.span())
         for m in re.finditer(r"([A-Za-z_][A-Za-z_0-9]*)=", attributes_raw)

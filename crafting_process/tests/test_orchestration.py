@@ -24,10 +24,10 @@ def linear_library():
     """Two-process linear chain: 3 ore -> 2 iron -> 1 widget"""
     lib = ProcessLibrary()
     lib.add_from_text("""
-        2 iron | smelt:
+        2 iron | smelt
         3 ore
 
-        1 widget | press:
+        1 widget | press
         2 iron
     """)
     return lib
@@ -290,7 +290,7 @@ def test_analyze_graph_yield_reflects_mul_outputs():
 
     lib.register_augment("double", Augments.mul_outputs(2))
     lib.add_from_text(
-        "1 widget | press:\n2 iron\n\n@double\n\n2 iron | smelt:\n3 ore\n"
+        "1 widget | press\n2 iron\n\n@double\n\n2 iron | smelt\n3 ore\n"
     )
     # Use the un-augmented press so yield == 1, as a baseline sanity check
     g = next(
@@ -410,12 +410,12 @@ def test_printable_analysis_show_augments_true_appends_augments():
     lib = ProcessLibrary()
     lib.register_augment("mk2", Augments.mul_outputs(2))
     lib.add_from_text("""
-        1 widget | press:
+        1 widget | press
         2 iron
 
         @mk2
 
-        1 iron | smelt:
+        1 iron | smelt
         3 ore
     """)
     # Both base and mk2 smelt variants are in the library; analyze all graphs
@@ -440,10 +440,10 @@ def single_multi_output_provider():
     """
     lib = ProcessLibrary()
     lib.add_from_text("""
-        2 iron + 1 slag | smelt:
+        2 iron + 1 slag | smelt
         3 ore
 
-        1 widget | press:
+        1 widget | press
         2 iron
     """)
     return lib
@@ -458,10 +458,10 @@ def two_direct_providers():
     """
     lib = ProcessLibrary()
     lib.add_from_text("""
-        1 widget | make_a:
+        1 widget | make_a
         3 iron
 
-        1 widget | make_b:
+        1 widget | make_b
         3 copper
     """)
     return lib
@@ -474,13 +474,13 @@ def two_providers_one_with_byproduct():
     """
     lib = ProcessLibrary()
     lib.add_from_text("""
-        2 iron | smelt_clean:
+        2 iron | smelt_clean
         3 ore
 
-        2 iron + 1 slag | smelt_messy:
+        2 iron + 1 slag | smelt_messy
         3 ore
 
-        1 widget | press:
+        1 widget | press
         2 iron
     """)
     return lib
@@ -600,13 +600,13 @@ def two_single_output_providers():
     """Two independent single-output iron providers feeding a press."""
     lib = ProcessLibrary()
     lib.add_from_text("""
-        2 iron | smelt_a:
+        2 iron | smelt_a
         3 ore_a
 
-        2 iron | smelt_b:
+        2 iron | smelt_b
         3 ore_b
 
-        1 widget | press:
+        1 widget | press
         2 iron
     """)
     return lib
@@ -617,13 +617,13 @@ def two_non_overlapping_multi_output_providers():
     """Two iron providers each with a unique byproduct (no output-kind overlap)."""
     lib = ProcessLibrary()
     lib.add_from_text("""
-        2 iron + 1 slag_a | smelt_a:
+        2 iron + 1 slag_a | smelt_a
         3 ore_a
 
-        2 iron + 1 slag_b | smelt_b:
+        2 iron + 1 slag_b | smelt_b
         3 ore_b
 
-        1 widget | press:
+        1 widget | press
         2 iron
     """)
     return lib
@@ -638,13 +638,13 @@ def overlapping_multi_output_providers():
     producing degenerate combos that instantiate the same process twice."""
     lib = ProcessLibrary()
     lib.add_from_text("""
-        2 iron + 1 copper + 3 slag_a | process_a:
+        2 iron + 1 copper + 3 slag_a | process_a
         5 ore_a
 
-        2 iron + 1 copper + 3 slag_b | process_b:
+        2 iron + 1 copper + 3 slag_b | process_b
         5 ore_b
 
-        1 widget | assemble:
+        1 widget | assemble
         2 iron + 1 copper
     """)
     return lib
@@ -656,13 +656,13 @@ def loop_library():
     No loop detection exists, so production_graphs recurses infinitely."""
     lib = ProcessLibrary()
     lib.add_from_text("""
-        1 iron | smelt:
+        1 iron | smelt
         1 copper
 
-        1 copper | refine:
+        1 copper | refine
         1 iron
 
-        1 widget | assemble:
+        1 widget | assemble
         1 iron
     """)
     return lib
@@ -673,13 +673,13 @@ def branching_library():
     """Two paths to widget: a direct one-step process and a two-step chain."""
     lib = ProcessLibrary()
     lib.add_from_text("""
-        1 widget | direct:
+        1 widget | direct
         2 raw
 
-        2 iron | smelt:
+        2 iron | smelt
         3 ore
 
-        1 widget | press:
+        1 widget | press
         2 iron
     """)
     return lib
@@ -892,10 +892,10 @@ def combo_provider_library():
     Tests that a multi-output provider is not indexed twice (dedup fix)."""
     lib = ProcessLibrary()
     lib.add_from_text("""
-        2 iron + 1 copper | mine_combo:
+        2 iron + 1 copper | mine_combo
         5 ore
 
-        1 widget | assemble:
+        1 widget | assemble
         2 iron + 1 copper
     """)
     return lib
@@ -971,16 +971,16 @@ def shared_intermediate_library():
     Tests that a single upstream process connects to multiple consumers."""
     lib = ProcessLibrary()
     lib.add_from_text("""
-        2 X | make_x:
+        2 X | make_x
         3 ore_a
 
-        1 Y | make_y:
+        1 Y | make_y
         1 X + 2 ore_b
 
-        1 Z | make_z:
+        1 Z | make_z
         1 X + 3 ore_c
 
-        1 final | combine:
+        1 final | combine
         1 Y + 1 Z
     """)
     return lib
@@ -1059,34 +1059,34 @@ def gadget_library():
     At max_overlap=3: adds the combo using all 3 providers for every kind."""
     lib = ProcessLibrary()
     lib.add_from_text("""
-        2 iron | smelt_a:
+        2 iron | smelt_a
         3 ore_a
 
-        2 iron | smelt_b:
+        2 iron | smelt_b
         3 ore_b
 
-        2 iron | smelt_c:
+        2 iron | smelt_c
         3 ore_c
 
-        1 copper | mine_a:
+        1 copper | mine_a
         2 coal_a
 
-        1 copper | mine_b:
+        1 copper | mine_b
         2 coal_b
 
-        1 copper | mine_c:
+        1 copper | mine_c
         2 coal_c
 
-        1 glass | forge_a:
+        1 glass | forge_a
         3 sand_a
 
-        1 glass | forge_b:
+        1 glass | forge_b
         3 sand_b
 
-        1 glass | forge_c:
+        1 glass | forge_c
         3 sand_c
 
-        1 gadget | assemble:
+        1 gadget | assemble
         2 iron + 1 copper + 1 glass
     """)
     return lib
@@ -1146,13 +1146,13 @@ def augmented_iron_library():
     lib.register_augment("mk3", Augments.mul_speed(3.0))
     # press comes before the @-block so it is not augmented
     lib.add_from_text("""
-        1 widget | press:
+        1 widget | press
         2 iron
 
         @mk2
         @mk3
 
-        2 iron | smelt: duration=6
+        2 iron | smelt duration=6
         3 ore
     """)
     return lib

@@ -1,7 +1,7 @@
 " crafting_dsl.vim — Vim syntax file for the crafting-process recipe DSL
 "
 " DSL structure recap:
-"   output(s) | process name: attr=val [anno=val | anno2=val2]
+"   output(s) | process name attr=val [anno=val | anno2=val2]
 "   input(s)
 "
 "   @augment_name          ← augment block line
@@ -9,7 +9,7 @@
 "   @-                     ← cancel / reset the active augment block
 "
 "   foo = 2 bar            ← minimal inline form (no process name)
-"   out | name: = inputs   ← inline inputs on header line
+"   out | name = inputs   ← inline inputs on header line
 "   ---                    ← section separator
 
 if exists("b:current_syntax")
@@ -34,7 +34,7 @@ syn match craftingSeparator "^---\s*$"
 syn match craftingAugment "@\(-\|\w\+\)"
 
 
-" ── Annotation blocks: [key=val | key2=val2] ────────────────────────────────
+" ── Annotation blocks [key=val | key2=val2] ────────────────────────────────
 " Defined as a region so the pipe inside doesn't read as a process separator.
 " Numbers, augment tokens, and contained annotation items are allowed inside.
 
@@ -50,7 +50,7 @@ syn match craftingAnnotationVal "=\s*\zs[^|=\]]\+" contained
 syn match craftingAnnotationPipe "|" contained
 
 
-" ── Attribute keywords after the colon ──────────────────────────────────────
+" ── Attribute keywords ──────────────────────────────────────────────────────
 " Highlight known attribute names in the header's attribute section.
 " Using a match with \ze so the = itself stays an operator.
 
@@ -68,9 +68,6 @@ syn match craftingNumber "\<\d\+\(\.\d\+\)\?\>"
 
 " Process separator pipe (outside annotation regions)
 syn match craftingPipe "|"
-
-" Colon introducing the attribute section
-syn match craftingColon ":"
 
 " = used as inline-input marker or attribute assignment
 syn match craftingEquals "="
@@ -96,7 +93,6 @@ hi def link craftingAttrKeyword   Keyword
 hi def link craftingNumber        Number
 
 hi def link craftingPipe          Operator
-hi def link craftingColon         Operator
 hi def link craftingEquals        Operator
 hi def link craftingPlus          Operator
 

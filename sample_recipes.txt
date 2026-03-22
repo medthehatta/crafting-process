@@ -16,26 +16,26 @@
 # No assembler augments: these run in furnaces / chemical plants.
 # ----------------------------------------------------------------
 
-2 iron_plate | iron_smelting: duration=3.2 [tier=1 | category=smelting]
+2 iron_plate | iron_smelting duration=3.2 [tier=1 | category=smelting]
 2 ore_iron
 
-2 copper_plate | copper_smelting: duration=3.2 [tier=1 | category=smelting]
+2 copper_plate | copper_smelting duration=3.2 [tier=1 | category=smelting]
 2 ore_copper
 
-3 steel | steel_smelting: duration=16 [tier=2 | category=smelting]
+3 steel | steel_smelting duration=16 [tier=2 | category=smelting]
 5 iron_plate
 
-1 silicon_wafer | silicon_refining: duration=2 [tier=1 | category=refining]
+1 silicon_wafer | silicon_refining duration=2 [tier=1 | category=refining]
 2 ore_silicon + 1 water
 
-1 sulfuric_acid | acid_plant: duration=1 [tier=1 | category=chemistry]
+1 sulfuric_acid | acid_plant duration=1 [tier=1 | category=chemistry]
 1 ore_sulfur + 2 water
 
 # Multi-output: oil refining — one run produces three distinct
 # intermediate products.  Downstream consumers pick up whichever
 # output they need; the rest become open outputs (byproducts).
 
-3 petroleum_gas + 2 heavy_oil + 1 light_oil | oil_refining: duration=5 [tier=1 | category=refining]
+3 petroleum_gas + 2 heavy_oil + 1 light_oil | oil_refining duration=5 [tier=1 | category=refining]
 10 crude_oil + 2 water
 
 
@@ -47,13 +47,13 @@
 @assembler_mk2
 @assembler_mk3
 
-2 copper_wire | wire_drawing: duration=0.5 [tier=1 | category=assembly]
+2 copper_wire | wire_drawing duration=0.5 [tier=1 | category=assembly]
 1 copper_plate
 
-2 plastic | plastic_molding: duration=1 [tier=1 | category=chemistry]
+2 plastic | plastic_molding duration=1 [tier=1 | category=chemistry]
 2 coal + 1 petroleum_gas
 
-1 circuit_board | circuit_assembly: duration=0.5 [tier=2 | category=assembly]
+1 circuit_board | circuit_assembly duration=0.5 [tier=2 | category=assembly]
 3 copper_wire + 1 iron_plate
 
 
@@ -65,16 +65,16 @@
 @assembler_mk2
 @assembler_mk3
 
-1 advanced_circuit | adv_circuit_assembly: duration=6 [tier=3 | category=assembly]
+1 advanced_circuit | adv_circuit_assembly duration=6 [tier=3 | category=assembly]
 3 copper_wire + 2 circuit_board + 1 plastic
 
-1 processor | proc_assembly: duration=10 [tier=4 | category=assembly]
+1 processor | proc_assembly duration=10 [tier=4 | category=assembly]
 5 advanced_circuit + 1 silicon_wafer + 1 copper_wire
 
-2 battery | battery_assembly: duration=5 [tier=2 | category=assembly]
+2 battery | battery_assembly duration=5 [tier=2 | category=assembly]
 1 iron_plate + 1 copper_plate + 2 sulfuric_acid
 
-1 solar_panel | solar_assembly: duration=5 [tier=3 | category=assembly]
+1 solar_panel | solar_assembly duration=5 [tier=3 | category=assembly]
 5 copper_plate + 3 silicon_wafer + 2 steel
 
 
@@ -85,10 +85,10 @@
 
 @assembler_mk3
 
-1 computer | computer_assembly: duration=5 [tier=5 | category=assembly]
+1 computer | computer_assembly duration=5 [tier=5 | category=assembly]
 2 processor + 3 advanced_circuit + 1 circuit_board
 
-1 rocket_part | rocket_assembly: duration=3 [tier=5 | category=assembly]
+1 rocket_part | rocket_assembly duration=3 [tier=5 | category=assembly]
 3 processor + 10 steel + 2 plastic
 
 @-
@@ -115,7 +115,7 @@
 
 @assembler_mk3
 
-1 power_armor | power_armor_assembly: duration=15 [tier=5 | category=assembly]
+1 power_armor | power_armor_assembly duration=15 [tier=5 | category=assembly]
 10 steel
 5 solar_panel
 3 battery

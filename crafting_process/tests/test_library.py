@@ -20,16 +20,16 @@ from crafting_process.process import Ingredients, Process
 def library():
     lib = ProcessLibrary()
     lib.add_from_text("""
-        widget | stamping: duration=4
+        widget | stamping duration=4
         3 iron + 1 copper
 
-        widget | forging: duration=8
+        widget | forging duration=8
         5 iron
 
-        gear | machining: duration=2
+        gear | machining duration=2
         2 widget
 
-        scrap | stamping:
+        scrap | stamping
         1 iron
     """)
     return lib
@@ -66,37 +66,65 @@ def test_header_trailing_equals_stripped():
 
 
 def test_header_pipe_sets_process_name():
-    result = _parse_process_header("widget | stamping:")
+    result = _parse_process_header("widget | stamping")
     assert result["outputs"] == "widget"
     assert result["process"] == "stamping"
 
 
 def test_header_pipe_with_numeric_attribute():
-    result = _parse_process_header("widget | stamping: duration=4")
+    result = _parse_process_header("widget | stamping duration=4")
     assert result["process"] == "stamping"
     assert result["duration"] == 4
 
 
 def test_header_numeric_attribute_parsed_as_number():
-    result = _parse_process_header("widget | stamping: duration=4")
+    result = _parse_process_header("widget | stamping duration=4")
     assert isinstance(result["duration"], (int, float))
 
 
 def test_header_string_attribute_kept_as_string():
-    result = _parse_process_header("widget | stamping: tier=advanced")
+    result = _parse_process_header("widget | stamping tier=advanced")
     assert result["tier"] == "advanced"
 
 
 def test_header_multiple_pipe_segments_joined():
     # Extra | separators are cosmetic; attributes still parsed correctly
-    result = _parse_process_header("widget | stamping: duration=4 | tier=2")
+    result = _parse_process_header("widget | stamping duration=4 | tier=2")
     assert result["process"] == "stamping"
     assert result["duration"] == 4
     assert result["tier"] == 2
 
 
+def test_header_pipe_separates_process_name_from_attrs():
+    # | between process name and first attribute — process name has no key=value
+    result = _parse_process_header("widget | stamping | duration=4")
+    assert result["process"] == "stamping"
+    assert result["duration"] == 4
+
+
+def test_header_pipe_separates_multiword_process_name_from_attrs():
+    result = _parse_process_header("widget | iron smelting | duration=4")
+    assert result["process"] == "iron smelting"
+    assert result["duration"] == 4
+
+
+def test_header_pipe_process_name_multiple_attrs():
+    result = _parse_process_header("widget | stamping | duration=4 | tier=2")
+    assert result["process"] == "stamping"
+    assert result["duration"] == 4
+    assert result["tier"] == 2
+
+
+def test_header_pipe_process_name_with_inline_inputs():
+    result = _parse_process_header("item | process name | duration=1 = input1")
+    assert result["outputs"] == "item"
+    assert result["process"] == "process name"
+    assert result["duration"] == 1
+    assert result["inputs"] == "input1"
+
+
 def test_header_pipe_with_inline_inputs():
-    result = _parse_process_header("widget | stamping: = 3 iron + 1 copper")
+    result = _parse_process_header("widget | stamping = 3 iron + 1 copper")
     assert result["outputs"] == "widget"
     assert result["process"] == "stamping"
     assert result["inputs"] == "3 iron + 1 copper"
@@ -104,38 +132,38 @@ def test_header_pipe_with_inline_inputs():
 
 def test_header_process_name_with_spaces_batch():
     # Spaces are legal in process names; batch recipe has no duration attribute.
-    result = _parse_process_header("widget | iron smelting:")
+    result = _parse_process_header("widget | iron smelting")
     assert result["process"] == "iron smelting"
 
 
 def test_header_process_name_with_spaces_and_duration():
-    result = _parse_process_header("widget | iron smelting: duration=3.2")
+    result = _parse_process_header("widget | iron smelting duration=3.2")
     assert result["process"] == "iron smelting"
     assert result["duration"] == pytest.approx(3.2)
 
 
 def test_library_process_name_with_spaces_registered():
     lib = ProcessLibrary()
-    lib.add_from_text("1 iron_bar | smelt iron:\n6 iron_ore\n")
+    lib.add_from_text("1 iron_bar | smelt iron\n6 iron_ore\n")
     assert any("smelt iron" in key for key in lib.recipes)
 
 
 def test_library_process_name_with_spaces_lookup():
     lib = ProcessLibrary()
-    lib.add_from_text("1 iron_bar | smelt iron:\n6 iron_ore\n")
+    lib.add_from_text("1 iron_bar | smelt iron\n6 iron_ore\n")
     results = lib.using("smelt iron")
     assert len(results) == 1
 
 
 def test_filter_returns_library():
-    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    lib = ProcessLibrary(text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
     result = lib.filter(lambda p: "iron" in p.outputs.nonzero_components)
     assert isinstance(result, ProcessLibrary)
 
 
 def test_header_attribute_with_digit_in_name():
     # Regression: the 0-0 typo fix — attribute names with digits should parse
-    result = _parse_process_header("widget | stamping: tier2=advanced")
+    result = _parse_process_header("widget | stamping tier2=advanced")
     assert result["tier2"] == "advanced"
 
 
@@ -161,10 +189,32 @@ def test_parse_process_single_line():
 
 
 def test_parse_process_two_lines():
-    result = parse_process("widget | stamping:\n3 iron + 1 copper")
+    result = parse_process("widget | stamping\n3 iron + 1 copper")
     assert result["outputs"] == "widget"
     assert result["inputs"] == "3 iron + 1 copper"
     assert result["process"] == "stamping"
+
+
+def test_parse_process_process_name_no_attributes_single_line():
+    # Process name is captured even when there are no key=value pairs at all.
+    result = parse_process("widget | stamping = 3 iron")
+    assert result["process"] == "stamping"
+    assert result["inputs"] == "3 iron"
+
+
+def test_parse_process_process_name_no_attributes_two_lines():
+    # Two-line format: process name with no key=value attributes.
+    result = parse_process("widget | iron smelting\n3 ore")
+    assert result["process"] == "iron smelting"
+    assert result["inputs"] == "3 ore"
+    assert "duration" not in result
+
+
+def test_parse_process_process_name_no_attributes_no_inputs():
+    # Process name only — no key=value pairs and no inputs on a second line.
+    result = parse_process("widget | stamping")
+    assert result["process"] == "stamping"
+    assert "inputs" not in result
 
 
 def test_parse_process_strips_blank_lines_and_comments():
@@ -180,7 +230,7 @@ def test_parse_process_raises_on_empty():
 
 def test_parse_process_multiline_ingredients():
     # 3+ lines: header + one ingredient per line, joined with " + "
-    result = parse_process("widget | stamping:\nfoo\n2 bar\n3 other")
+    result = parse_process("widget | stamping\nfoo\n2 bar\n3 other")
     assert result["outputs"] == "widget"
     assert result["inputs"] == "foo + 2 bar + 3 other"
     assert result["process"] == "stamping"
@@ -205,7 +255,7 @@ def test_specs_from_lines_separates_on_blank_line():
 
 def test_specs_from_lines_two_line_recipe():
     lines = [
-        "widget | stamping:",
+        "widget | stamping",
         "3 iron + 1 copper",
         "",
         "gear = 2 widget",
@@ -253,7 +303,7 @@ def test_specs_from_lines_single_line_stacking_pipe_header():
     # Header lines with | also trigger early yield of a preceding single-line recipe
     lines = [
         "widget = 3 iron",
-        "gear | machining: = 2 widget",
+        "gear | machining = 2 widget",
     ]
     specs = list(specs_from_lines(lines))
     assert len(specs) == 2
@@ -264,7 +314,7 @@ def test_specs_from_lines_single_line_stacking_pipe_header():
 def test_specs_from_lines_multiline_ingredients():
     # Header + one ingredient per line (no blank or + needed)
     lines = [
-        "widget | stamping: duration=4",
+        "widget | stamping duration=4",
         "3 iron",
         "1 copper",
         "2 coal",
@@ -278,10 +328,10 @@ def test_specs_from_lines_multiline_ingredients():
 def test_specs_from_lines_multiline_ingredients_then_new_recipe():
     # Multi-line ingredients terminated by the next recipe header (no blank line needed)
     lines = [
-        "widget | stamping:",
+        "widget | stamping",
         "3 iron",
         "1 copper",
-        "gear | machining:",
+        "gear | machining",
         "2 widget",
     ]
     specs = list(specs_from_lines(lines))
@@ -294,7 +344,7 @@ def test_specs_from_lines_multiline_ingredients_then_new_recipe():
 def test_specs_from_lines_multiline_ingredients_blank_terminated():
     # Multi-line ingredients also terminate on blank line (existing behaviour preserved)
     lines = [
-        "widget | stamping:",
+        "widget | stamping",
         "3 iron",
         "1 copper",
         "",
@@ -383,10 +433,10 @@ def test_process_from_spec_dict_no_outputs():
 
 def test_parse_processes_returns_list_of_processes():
     lines = [
-        "widget | stamping: duration=4",
+        "widget | stamping duration=4",
         "3 iron + 1 copper",
         "",
-        "gear | machining: duration=2",
+        "gear | machining duration=2",
         "2 widget",
     ]
     processes = parse_processes(lines)
@@ -395,7 +445,7 @@ def test_parse_processes_returns_list_of_processes():
 
 
 def test_parse_processes_preserves_attributes():
-    lines = ["widget | stamping: duration=4", "3 iron"]
+    lines = ["widget | stamping duration=4", "3 iron"]
     (p,) = parse_processes(lines)
     assert p.process == "stamping"
     assert p.duration == 4
@@ -409,20 +459,20 @@ def test_parse_processes_preserves_attributes():
 
 
 def test_extra_spaces_in_output_name_normalized():
-    lines = ["iron  gear | stamping: duration=4", "3  iron"]
+    lines = ["iron  gear | stamping duration=4", "3  iron"]
     (p,) = parse_processes(lines)
     assert p.outputs["iron gear"] == 1
 
 
 def test_extra_spaces_in_input_name_normalized():
-    lines = ["widget | stamping: duration=4", "3  iron  ore + 2 copper"]
+    lines = ["widget | stamping duration=4", "3  iron  ore + 2 copper"]
     (p,) = parse_processes(lines)
     assert p.inputs["iron ore"] == 3
     assert p.inputs["copper"] == 2
 
 
 def test_extra_spaces_around_plus_in_inputs_normalized():
-    lines = ["widget | stamping: duration=4", "3 iron  +  2 copper"]
+    lines = ["widget | stamping duration=4", "3 iron  +  2 copper"]
     (p,) = parse_processes(lines)
     assert p.inputs["iron"] == 3
     assert p.inputs["copper"] == 2
@@ -432,10 +482,10 @@ def test_ingredient_used_with_inconsistent_spacing_is_unified():
     # Two recipes referencing the same ingredient via different whitespace
     # must produce the same ingredient key so they can be composed correctly.
     lines = [
-        "widget | stamping: duration=4",
+        "widget | stamping duration=4",
         "3  iron  ore",
         "",
-        "gear | machining: duration=2",
+        "gear | machining duration=2",
         "2 iron ore",
     ]
     stamping, machining = parse_processes(lines)
@@ -625,49 +675,49 @@ def test_outputs_any_of():
 
 
 def test_header_annotation_single():
-    result = _parse_process_header("2 iron | smelt: [tier=2]")
+    result = _parse_process_header("2 iron | smelt [tier=2]")
     assert result["annotations"] == {"tier": 2}
 
 
 def test_header_annotation_multiple():
-    result = _parse_process_header("2 iron | smelt: [tier=2 | energy=150]")
+    result = _parse_process_header("2 iron | smelt [tier=2 | energy=150]")
     assert result["annotations"] == {"tier": 2, "energy": 150}
 
 
 def test_header_annotation_string_value():
-    result = _parse_process_header("1 widget | assemble: [assembler=mk2]")
+    result = _parse_process_header("1 widget | assemble [assembler=mk2]")
     assert result["annotations"] == {"assembler": "mk2"}
 
 
 def test_header_annotation_float_value():
-    result = _parse_process_header("2 iron | smelt: [efficiency=1.5]")
+    result = _parse_process_header("2 iron | smelt [efficiency=1.5]")
     assert result["annotations"]["efficiency"] == pytest.approx(1.5)
 
 
 def test_header_annotation_bare_true_stays_string():
-    result = _parse_process_header("2 iron | smelt: [fast=true]")
+    result = _parse_process_header("2 iron | smelt [fast=true]")
     assert result["annotations"]["fast"] == "true"
 
 
 def test_header_no_annotation_block():
-    result = _parse_process_header("2 iron | smelt: duration=2")
+    result = _parse_process_header("2 iron | smelt duration=2")
     assert result["annotations"] == {}
 
 
 def test_header_annotation_with_duration():
-    result = _parse_process_header("2 iron | smelt: duration=2 [tier=2]")
+    result = _parse_process_header("2 iron | smelt duration=2 [tier=2]")
     assert result["duration"] == 2
     assert result["annotations"] == {"tier": 2}
 
 
 def test_header_annotation_with_inline_inputs():
-    result = _parse_process_header("2 iron | smelt: [tier=2] = 3 ore")
+    result = _parse_process_header("2 iron | smelt [tier=2] = 3 ore")
     assert result["annotations"] == {"tier": 2}
     assert result["inputs"] == "3 ore"
 
 
 def test_header_annotation_outputs_unaffected():
-    result = _parse_process_header("2 iron + 1 copper | mine: [tier=1]")
+    result = _parse_process_header("2 iron + 1 copper | mine [tier=1]")
     assert result["outputs"] == "2 iron + 1 copper"
 
 
@@ -729,13 +779,13 @@ def test_lib_filter_by_annotation(library):
     # library fixture has no annotations, so build a fresh one
     lib = ProcessLibrary()
     lib.add_from_text("""
-        2 iron | smelt_a: [tier=1]
+        2 iron | smelt_a [tier=1]
         3 ore_a
 
-        2 iron | smelt_b: [tier=2]
+        2 iron | smelt_b [tier=2]
         3 ore_b
 
-        1 widget | assemble: [tier=2]
+        1 widget | assemble [tier=2]
         2 iron
     """)
     tier2 = lib.filter(ProcessPredicates.annotation_matches("tier", lambda v: v == 2))
@@ -746,13 +796,13 @@ def test_lib_filter_by_annotation(library):
 def test_lib_filter_annotation_and_output():
     lib = ProcessLibrary()
     lib.add_from_text("""
-        2 iron | smelt_a: [tier=1]
+        2 iron | smelt_a [tier=1]
         3 ore_a
 
-        2 iron | smelt_b: [tier=2]
+        2 iron | smelt_b [tier=2]
         3 ore_b
 
-        1 widget | assemble: [tier=2]
+        1 widget | assemble [tier=2]
         2 iron
     """)
     pred = ProcessPredicates.and_(
@@ -802,7 +852,7 @@ def test_block_augment_original_always_added():
     lib.add_from_text("""
         @mk2
 
-        2 iron | smelt: duration=4
+        2 iron | smelt duration=4
         3 ore
     """)
     # original + 1 augmented variant
@@ -815,7 +865,7 @@ def test_block_augment_creates_augmented_entry():
     lib.add_from_text("""
         @mk2
 
-        2 iron | smelt: duration=4
+        2 iron | smelt duration=4
         3 ore
     """)
     augmented = [(n, p) for (n, p) in lib.recipes.items() if p.applied_augments]
@@ -831,7 +881,7 @@ def test_block_augment_multiple_lines_yields_one_variant_each():
         @mk2
         @mk3
 
-        2 iron | smelt: duration=6
+        2 iron | smelt duration=6
         3 ore
     """)
     # original + mk2 variant + mk3 variant
@@ -844,7 +894,7 @@ def test_block_augment_multi_token_line_composed():
     lib.add_from_text("""
         @mk2 @prod
 
-        2 iron | smelt: duration=4
+        2 iron | smelt duration=4
         3 ore
     """)
     augmented = [(n, p) for (n, p) in lib.recipes.items() if p.applied_augments]
@@ -860,7 +910,7 @@ def test_block_augment_applied_augments_set():
     lib.add_from_text("""
         @mk2
 
-        2 iron | smelt: duration=4
+        2 iron | smelt duration=4
         3 ore
     """)
     augmented = next(p for p in lib.recipes.values() if p.applied_augments)
@@ -872,12 +922,12 @@ def test_block_augment_reset_after_recipes():
     lib.add_from_text("""
         @mk2
 
-        2 iron | smelt: duration=4
+        2 iron | smelt duration=4
         3 ore
 
         @mk3
 
-        1 widget | press: duration=2
+        1 widget | press duration=2
         2 iron
     """)
     # smelt: original + mk2; press: original + mk3
@@ -896,10 +946,10 @@ def test_block_augment_applies_to_multiple_recipes():
     lib.add_from_text("""
         @mk2
 
-        2 iron | smelt: duration=4
+        2 iron | smelt duration=4
         3 ore
 
-        1 widget | press: duration=2
+        1 widget | press duration=2
         2 iron
     """)
     iron_entries = lib.filter(ProcessPredicates.outputs_part("iron"))
@@ -916,7 +966,7 @@ def test_block_augment_applies_to_multiple_recipes():
 def test_inline_augment_creates_augmented_entry():
     lib = _aug_lib()
     lib.add_from_text("""
-        2 iron | smelt: @mk2 duration=4
+        2 iron | smelt @mk2 duration=4
         3 ore
     """)
     # original + 1 inline-augmented variant
@@ -931,7 +981,7 @@ def test_inline_augment_replaces_block():
     lib.add_from_text("""
         @mk3
 
-        2 iron | smelt: @mk2 duration=4
+        2 iron | smelt @mk2 duration=4
         3 ore
     """)
     # block is @mk3 but recipe has inline @mk2 — inline wins
@@ -952,7 +1002,7 @@ def test_augmented_entry_name_contains_at_tag():
     lib.add_from_text("""
         @mk2
 
-        2 iron | smelt: duration=4
+        2 iron | smelt duration=4
         3 ore
     """)
     augmented_names = [n for n in lib.recipes if "@mk2" in n]
@@ -964,7 +1014,7 @@ def test_augmented_entry_name_multi_tag_application_order():
     lib.add_from_text("""
         @mk2 @prod
 
-        2 iron | smelt: duration=4
+        2 iron | smelt duration=4
         3 ore
     """)
     # application order: mk2 first, then prod
@@ -985,7 +1035,7 @@ def _augmented_lib():
         @mk2
         @mk3
 
-        2 iron | smelt: duration=6
+        2 iron | smelt duration=6
         3 ore
     """)
     return lib
@@ -1029,13 +1079,13 @@ def test_with_augment_filter_preserves_augments_registry():
 
 
 def test_constructor_text_param():
-    lib = ProcessLibrary(text="1 widget | press:\n2 iron\n")
+    lib = ProcessLibrary(text="1 widget | press\n2 iron\n")
     assert any("widget" in n for n in lib.recipes)
 
 
 def test_constructor_path_param(tmp_path):
     p = tmp_path / "r.txt"
-    p.write_text("1 widget | press:\n2 iron\n")
+    p.write_text("1 widget | press\n2 iron\n")
     lib = ProcessLibrary(path=str(p))
     assert any("widget" in n for n in lib.recipes)
 
@@ -1052,7 +1102,7 @@ def test_constructor_augments_dict_applied():
 
     lib = ProcessLibrary(
         augments={"fast": Augments.mul_speed(2)},
-        text="@fast\n\n1 widget | press: duration=1\n2 iron\n",
+        text="@fast\n\n1 widget | press duration=1\n2 iron\n",
     )
     augmented = [p for p in lib.recipes.values() if p.applied_augments == ["fast"]]
     assert len(augmented) == 1
@@ -1065,7 +1115,7 @@ def test_constructor_augments_dict_applied():
 
 
 def test_filtered_returns_matching_recipes():
-    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    lib = ProcessLibrary(text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
     filtered = lib.filtered(lambda p: "iron" in p.outputs.nonzero_components)
     assert all(
         "iron" in p.outputs.nonzero_components for p in filtered.recipes.values()
@@ -1078,7 +1128,7 @@ def test_filtered_preserves_augment_registry():
 
     lib = ProcessLibrary()
     lib.register_augment("fast", Augments.mul_speed(2))
-    lib.add_from_text("1 widget | press: duration=1\n2 iron\n")
+    lib.add_from_text("1 widget | press duration=1\n2 iron\n")
     filtered = lib.filtered(lambda p: True)
     assert "fast" in filtered._augments
 
@@ -1086,7 +1136,7 @@ def test_filtered_preserves_augment_registry():
 def test_filtered_with_pred_operators():
     from crafting_process.library import P
 
-    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    lib = ProcessLibrary(text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
     filtered = lib.filtered(P.produces("iron") | P.produces("widget"))
     assert len(filtered.recipes) == 2
 
@@ -1097,16 +1147,16 @@ def test_filtered_with_pred_operators():
 
 
 def test_merge_combines_recipes():
-    lib_a = ProcessLibrary(text="1 iron | smelt:\n2 ore\n")
-    lib_b = ProcessLibrary(text="1 widget | press:\n2 iron\n")
+    lib_a = ProcessLibrary(text="1 iron | smelt\n2 ore\n")
+    lib_b = ProcessLibrary(text="1 widget | press\n2 iron\n")
     merged = lib_a | lib_b
     assert any("iron" in n for n in merged.recipes)
     assert any("widget" in n for n in merged.recipes)
 
 
 def test_merge_right_wins_on_collision():
-    lib_a = ProcessLibrary(text="1 iron | smelt:\n2 ore\n")
-    lib_b = ProcessLibrary(text="1 iron | smelt:\n5 ore\n")
+    lib_a = ProcessLibrary(text="1 iron | smelt\n2 ore\n")
+    lib_b = ProcessLibrary(text="1 iron | smelt\n5 ore\n")
     merged = lib_a | lib_b
     iron_procs = [
         p for p in merged.recipes.values() if "iron" in p.outputs.nonzero_components
@@ -1134,7 +1184,7 @@ def test_merge_preserves_augment_registries():
 def test_P_produces():
     from crafting_process.library import P
 
-    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    lib = ProcessLibrary(text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
     filtered = lib.filtered(P.produces("iron"))
     assert len(filtered.recipes) == 1
 
@@ -1142,7 +1192,7 @@ def test_P_produces():
 def test_P_consumes():
     from crafting_process.library import P
 
-    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    lib = ProcessLibrary(text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
     filtered = lib.filtered(P.consumes("iron"))
     assert len(filtered.recipes) == 1
 
@@ -1150,7 +1200,7 @@ def test_P_consumes():
 def test_P_process_is():
     from crafting_process.library import P
 
-    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    lib = ProcessLibrary(text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
     filtered = lib.filtered(P.process_is("smelt"))
     assert len(filtered.recipes) == 1
 
@@ -1161,7 +1211,7 @@ def test_P_has_augment():
 
     lib = ProcessLibrary(
         augments={"mk2": Augments.mul_speed(1.5)},
-        text="@mk2\n\n1 widget | press: duration=1\n2 iron\n",
+        text="@mk2\n\n1 widget | press duration=1\n2 iron\n",
     )
     filtered = lib.filtered(P.has_augment("mk2"))
     assert all("mk2" in p.applied_augments for p in filtered.recipes.values())
@@ -1170,7 +1220,7 @@ def test_P_has_augment():
 def test_P_and_operator():
     from crafting_process.library import P
 
-    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    lib = ProcessLibrary(text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
     pred = P.produces("iron") & P.consumes("ore")
     filtered = lib.filtered(pred)
     assert len(filtered.recipes) == 1
@@ -1179,7 +1229,7 @@ def test_P_and_operator():
 def test_P_or_operator():
     from crafting_process.library import P
 
-    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    lib = ProcessLibrary(text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
     filtered = lib.filtered(P.produces("iron") | P.produces("widget"))
     assert len(filtered.recipes) == 2
 
@@ -1187,7 +1237,7 @@ def test_P_or_operator():
 def test_P_invert_operator():
     from crafting_process.library import P
 
-    lib = ProcessLibrary(text="1 iron | smelt:\n2 ore\n\n1 widget | press:\n2 iron\n")
+    lib = ProcessLibrary(text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
     filtered = lib.filtered(~P.produces("iron"))
     assert all(
         "iron" not in p.outputs.nonzero_components for p in filtered.recipes.values()
