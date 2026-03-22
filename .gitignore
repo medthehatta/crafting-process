@@ -2,3 +2,6 @@
 __pycache__
 .python-version
 *.pyc
+.memory/
+build/
+*.egg-info/
