@@ -8,7 +8,9 @@ from .orchestration import (
     analyze_graphs,
     printable_analysis,
     PlanResult,
+    PlanResultPredicates,
     ProcessCount,
+    R,
 )
 
 __all__ = [
@@ -25,5 +27,7 @@ __all__ = [
     "analyze_graphs",
     "printable_analysis",
     "PlanResult",
+    "PlanResultPredicates",
     "ProcessCount",
+    "R",
 ]

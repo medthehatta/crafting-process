@@ -10,6 +10,7 @@ from .graph import GraphBuilder
 from .process import Process, Ingredients
 from .solver import best_milp_sequence
 from .utils import only as _only
+from .library import Pred
 
 
 @dataclass(frozen=True)
@@ -29,6 +30,22 @@ class PlanResult:
     process_counts: list  # list[ProcessCount]
     output_quantities: dict
     process_augments: dict
+
+
+class PlanResultPredicates:
+
+    @staticmethod
+    def max_leak(threshold):
+        return lambda result: result.leak <= threshold
+
+
+class R:
+    """Named PlanResult predicates, each returning a composable Pred."""
+
+    @staticmethod
+    def max_leak(threshold):
+        """Keep only results whose leak is strictly less than threshold."""
+        return Pred(PlanResultPredicates.max_leak(threshold))
 
 
 def plan(library, transfer, *, num_keep=100, **production_graphs_kwargs):

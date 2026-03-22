@@ -9,6 +9,7 @@ from crafting_process.orchestration import (
     analyze_graph,
     analyze_graphs,
     printable_analysis,
+    PlanResult,
 )
 from crafting_process.graph import GraphBuilder
 from crafting_process.library import ProcessLibrary
@@ -1266,13 +1267,91 @@ def test_plan_accepts_ingredients_transfer(linear_library):
 def test_plan_n_limits_results(linear_library):
     from crafting_process.orchestration import plan
 
-    results = plan(linear_library, "1 widget", n=1)
+    results = plan(linear_library, "1 widget", num_keep=1)
     assert len(results) <= 1
 
 
 def test_plan_sorted_by_leak_then_total_processes(linear_library):
     from crafting_process.orchestration import plan
 
-    results = plan(linear_library, "1 widget", n=10)
+    results = plan(linear_library, "1 widget", num_keep=10)
     for a, b in zip(results, results[1:]):
         assert (a.leak, a.total_processes) <= (b.leak, b.total_processes)
+
+
+# ---------------------------------------------------------------------------
+# PlanResultPredicates / R
+# ---------------------------------------------------------------------------
+
+
+def _make_result(leak):
+    """Minimal PlanResult with only leak set; sufficient for predicate tests."""
+    return PlanResult(
+        desired=Ingredients.zero(),
+        total_processes=1,
+        leak=leak,
+        transfer=Ingredients.zero(),
+        inputs=[],
+        process_counts=[],
+        output_quantities={},
+        process_augments={},
+    )
+
+
+def test_plan_result_max_leak_passes():
+    from crafting_process.orchestration import PlanResultPredicates
+
+    assert PlanResultPredicates.max_leak(1.0)(_make_result(0.5)) is True
+
+
+def test_plan_result_max_leak_fails():
+    from crafting_process.orchestration import PlanResultPredicates
+
+    assert PlanResultPredicates.max_leak(0.3)(_make_result(0.5)) is False
+
+
+def test_plan_result_max_leak_strict():
+    # Boundary: leak == threshold should fail (strictly less than)
+    from crafting_process.orchestration import PlanResultPredicates
+
+    assert PlanResultPredicates.max_leak(0.5)(_make_result(0.5)) is False
+
+
+def test_R_max_leak_returns_pred():
+    from crafting_process.orchestration import R
+    from crafting_process.library import Pred
+
+    assert isinstance(R.max_leak(1.0), Pred)
+
+
+def test_R_max_leak_composable_and():
+    from crafting_process.orchestration import R
+
+    pred = R.max_leak(1.0) & R.max_leak(0.6)
+    assert pred(_make_result(0.5)) is True
+    assert pred(_make_result(0.8)) is False
+
+
+def test_R_max_leak_composable_or():
+    from crafting_process.orchestration import R
+
+    pred = R.max_leak(0.3) | R.max_leak(0.6)
+    assert pred(_make_result(0.5)) is True   # passes second
+    assert pred(_make_result(0.9)) is False  # fails both
+
+
+def test_R_max_leak_composable_invert():
+    from crafting_process.orchestration import R
+
+    pred = ~R.max_leak(0.5)
+    assert pred(_make_result(0.8)) is True
+    assert pred(_make_result(0.3)) is False
+
+
+def test_R_max_leak_filters_plan_results(linear_library):
+    from crafting_process.orchestration import plan, R
+
+    results = plan(linear_library, "1 widget", num_keep=10)
+    threshold = max(r.leak for r in results)
+    filtered = [r for r in results if R.max_leak(threshold)(r)]
+    assert all(r.leak < threshold for r in filtered)
