@@ -31,7 +31,7 @@ class PlanResult:
     process_augments: dict
 
 
-def plan(library, transfer, *, n=100, num_keep=100, **production_graphs_kwargs):
+def plan(library, transfer, *, num_keep=100, **production_graphs_kwargs):
     """Run the full pipeline and return the top n PlanResults.
 
     transfer can be a string ("10 iron plate") or an Ingredients instance.
@@ -42,7 +42,7 @@ def plan(library, transfer, *, n=100, num_keep=100, **production_graphs_kwargs):
     graphs = list(production_graphs(library, transfer, **production_graphs_kwargs))
     results = list(analyze_graphs(graphs, num_keep=num_keep))
     results.sort(key=lambda r: (r.leak, r.total_processes))
-    return results[:n]
+    return results
 
 
 def analyze_graphs(graphs, num_keep=4):
