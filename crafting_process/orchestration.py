@@ -18,6 +18,7 @@ class ProcessCount:
     count: int
     description: str
     slug: str
+    process: object = None
 
 
 @dataclass(frozen=True)
@@ -102,7 +103,7 @@ def analyze_graph(graph, num_keep=4):
         )
 
         process_counts = [
-            ProcessCount(count=c, description=desc, slug=slug)
+            ProcessCount(count=c, description=desc, slug=slug, process=graph.processes.get(slug))
             for (c, desc, slug) in sorted(
                 m["counts"],
                 key=lambda x: (output_depths[x[1]], x[1]),
