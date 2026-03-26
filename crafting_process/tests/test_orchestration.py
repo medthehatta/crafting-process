@@ -1310,11 +1310,11 @@ def test_plan_result_max_leak_fails():
     assert PlanResultPredicates.max_leak(0.3)(_make_result(0.5)) is False
 
 
-def test_plan_result_max_leak_strict():
-    # Boundary: leak == threshold should fail (strictly less than)
+def test_plan_result_max_leak_boundary():
+    # Boundary: leak == threshold should pass (less than or equal)
     from crafting_process.orchestration import PlanResultPredicates
 
-    assert PlanResultPredicates.max_leak(0.5)(_make_result(0.5)) is False
+    assert PlanResultPredicates.max_leak(0.5)(_make_result(0.5)) is True
 
 
 def test_R_max_leak_returns_pred():
@@ -1354,4 +1354,4 @@ def test_R_max_leak_filters_plan_results(linear_library):
     results = plan(linear_library, "1 widget", num_keep=10)
     threshold = max(r.leak for r in results)
     filtered = [r for r in results if R.max_leak(threshold)(r)]
-    assert all(r.leak < threshold for r in filtered)
+    assert all(r.leak <= threshold for r in filtered)
