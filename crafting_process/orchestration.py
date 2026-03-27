@@ -225,7 +225,7 @@ def _production_graphs(
 ):
     skip_processes = skip_processes or []
     stop_kinds = stop_kinds or []
-    visited = visited if visited is not None else set()
+    visited = visited if visited is not None else {}
 
     desired_kinds = set(
         kind for (name, kind) in consuming_graph.open_inputs if kind not in stop_kinds
@@ -237,7 +237,7 @@ def _production_graphs(
         producers = [
             (name, proc)
             for (name, proc) in recipes.producing(kind)
-            if proc.process not in skip_processes and name not in visited
+            if proc.process not in skip_processes
         ]
         if producers:
             input_recipes.extend(producers)
@@ -268,13 +268,31 @@ def _production_graphs(
         max_overlap=max_overlap,
     )
     for combo in combos:
-        combo_graphs = tuple(GraphBuilder.from_process(indexed[i][1]) for i in combo)
+        new_visited = {**visited}
+        combo_graphs = []
+        for i in combo:
+            recipe_name, proc = indexed[i]
+            if recipe_name in visited:
+                # Reuse the existing node: expose its outputs as a stub so
+                # output_into can wire new connections without a duplicate node.
+                node_name = visited[recipe_name]
+                stub = GraphBuilder()
+                stub.open_outputs = [
+                    (node_name, k) for k in proc.outputs.nonzero_components
+                ]
+                combo_graphs.append(stub)
+            else:
+                g = GraphBuilder()
+                result = g.add_process(proc)
+                node_name = result["name"]
+                combo_graphs.append(g)
+                new_visited[recipe_name] = node_name
+
         upstream_graph = GraphBuilder()
         for g in combo_graphs:
             upstream_graph.unify(g)
 
         total_graph = upstream_graph.output_into(consuming_graph)
-        new_visited = visited | {indexed[i][0] for i in combo}
 
         yield from _production_graphs(
             recipes,
