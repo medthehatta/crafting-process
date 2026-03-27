@@ -1355,3 +1355,49 @@ def test_R_max_leak_filters_plan_results(linear_library):
     threshold = max(r.leak for r in results)
     filtered = [r for r in results if R.max_leak(threshold)(r)]
     assert all(r.leak <= threshold for r in filtered)
+
+
+# ---------------------------------------------------------------------------
+# Regression: infinite recursion when a shared ingredient appears both
+# directly in a product and inside a sub-recipe (shared-pool mutation bug)
+# ---------------------------------------------------------------------------
+
+# Minimal recipe set that reproduces the pattern:
+#   product needs  intermediate  AND  dust  directly
+#   intermediate | craft  also needs  dust  (shared ingredient)
+#   dust has only one provider (ahe) → ends up in the same upstream combo as
+#   intermediate | craft; output_into connects dust_ahe to product's demand
+#   but not to intermediate's, leaving intermediate's dust demand open.
+#   intermediate has an ahe alternative → ≥ 3 combos at the next depth,
+#   causing the second combo to hit the stale-pool short-circuit in
+#   coalesce_pools and loop forever.
+_SHARED_INGREDIENT_RECIPES = """\
+product | craft = intermediate + dust
+intermediate | craft = dust + gem + ore
+intermediate | ahe = ahe intermediate
+dust | ahe = ahe dust
+gem | ahe = ahe gem
+gem | craft = ore
+ore | ahe = ahe ore
+"""
+
+
+def test_plan_shared_ingredient_does_not_recurse_infinitely():
+    """plan() must terminate when an ingredient is shared between the product
+    and a sub-recipe and has only one (ahe) provider."""
+    import sys
+    from crafting_process.orchestration import plan, R
+
+    lib = ProcessLibrary(text=_SHARED_INGREDIENT_RECIPES)
+    old_limit = sys.getrecursionlimit()
+    sys.setrecursionlimit(300)  # low enough to fail fast if the bug recurs
+    try:
+        results = list(filter(R.max_leak(1e-10), plan(lib, "product")))
+    finally:
+        sys.setrecursionlimit(old_limit)
+
+    assert len(results) > 0, "plan() should return at least one valid result"
+    process_names = {pc.description for r in results for pc in r.process_counts}
+    assert any("craft" in name for name in process_names), (
+        "Expected a crafted-intermediate plan among results"
+    )

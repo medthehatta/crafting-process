@@ -64,6 +64,18 @@ class GraphBuilder:
                         input_process,
                         kind=kind,
                     )
+                    # Explicitly remove the connected input from open_inputs.
+                    # _connect_process_to_process normally does this via
+                    # _from_pool, but union() shallow-copies pool dicts, so a
+                    # previous output_into call's pool mutation can cause
+                    # coalesce_pools to short-circuit (same-pool case) without
+                    # updating open_inputs — leaving a stale entry that drives
+                    # infinite recursion in _production_graphs.
+                    new.open_inputs = [
+                        (pn, k)
+                        for (pn, k) in new.open_inputs
+                        if not (pn == input_process and k == kind)
+                    ]
 
         return new
 
