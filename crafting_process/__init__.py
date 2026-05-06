@@ -1,4 +1,4 @@
-from .process import Ingredients, Process, describe_process
+from .process import Ingredients, Process, BatchProcess, ContinuousProcess, describe_process
 from .library import ProcessLibrary, P, Pred
 from .augment import Augments
 from .orchestration import (
@@ -11,11 +11,15 @@ from .orchestration import (
     PlanResultPredicates,
     ProcessCount,
     R,
+    exchange_milps,
+    batch_milps,
 )
 
 __all__ = [
     "Ingredients",
     "Process",
+    "BatchProcess",
+    "ContinuousProcess",
     "describe_process",
     "ProcessLibrary",
     "P",
@@ -30,4 +34,6 @@ __all__ = [
     "PlanResultPredicates",
     "ProcessCount",
     "R",
+    "exchange_milps",
+    "batch_milps",
 ]

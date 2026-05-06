@@ -5,6 +5,7 @@ import pytest
 from crafting_process.orchestration import (
     input_combinations,
     batch_milps,
+    exchange_milps,
     production_graphs,
     analyze_graph,
     analyze_graphs,
@@ -13,7 +14,7 @@ from crafting_process.orchestration import (
 )
 from crafting_process.graph import GraphBuilder
 from crafting_process.library import ProcessLibrary
-from crafting_process.process import Ingredients, Process
+from crafting_process.process import Ingredients, Process, BatchProcess
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -23,7 +24,7 @@ from crafting_process.process import Ingredients, Process
 @pytest.fixture
 def linear_library():
     """Two-process linear chain: 3 ore -> 2 iron -> 1 widget"""
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.add_from_text("""
         2 iron | smelt
         3 ore
@@ -108,11 +109,11 @@ def _make_connected_graph():
     """3 ore -> 2 iron -> 1 widget; hand-built batch graph."""
     g = GraphBuilder()
     g.add_process(
-        Process(outputs=Ingredients.parse("2 iron"), inputs=Ingredients.parse("3 ore")),
+        BatchProcess(outputs=Ingredients.parse("2 iron"), inputs=Ingredients.parse("3 ore")),
         name="smelter",
     )
     g.add_process(
-        Process(
+        BatchProcess(
             outputs=Ingredients.parse("1 widget"), inputs=Ingredients.parse("2 iron")
         ),
         name="press",
@@ -152,6 +153,40 @@ def test_batch_milps_counts_are_triples():
 def test_batch_milps_final_leakage_zero_for_balanced_graph():
     # 2 iron produced == 2 iron consumed: perfectly balanced
     assert batch_milps(_make_connected_graph())[-1]["leakage"] == pytest.approx(0.0)
+
+
+# ---------------------------------------------------------------------------
+# exchange_milps
+# ---------------------------------------------------------------------------
+
+
+def test_exchange_milps_returns_list():
+    assert isinstance(exchange_milps(_make_connected_graph()), list)
+
+
+def test_exchange_milps_nonempty_for_feasible_graph():
+    assert len(exchange_milps(_make_connected_graph())) >= 1
+
+
+def test_exchange_milps_each_entry_has_leakage_and_counts():
+    for entry in exchange_milps(_make_connected_graph()):
+        assert "leakage" in entry
+        assert "counts" in entry
+
+
+def test_exchange_milps_final_leakage_zero_for_balanced_graph():
+    assert exchange_milps(_make_connected_graph())[-1]["leakage"] == pytest.approx(0.0)
+
+
+def test_exchange_milps_matches_batch_milps_for_batch_graph():
+    # For a batch graph, exchange_milps and batch_milps must produce the same result.
+    g = _make_connected_graph()
+    batch = batch_milps(g)
+    exch = exchange_milps(g)
+    assert len(batch) == len(exch)
+    for b, e in zip(batch, exch):
+        assert b["leakage"] == pytest.approx(e["leakage"])
+        assert b["counts"] == e["counts"]
 
 
 # ---------------------------------------------------------------------------
@@ -286,7 +321,7 @@ def test_analyze_graph_yield_matches_request_when_balanced(linear_library):
 
 def test_analyze_graph_yield_reflects_mul_outputs():
     # Process produces 2 widgets per run; requesting 1 → yield == 2
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     from crafting_process.augment import Augments
 
     lib.register_augment("double", Augments.mul_outputs(2))
@@ -408,7 +443,7 @@ def test_printable_analysis_show_augments_false_no_at_signs(linear_library):
 def test_printable_analysis_show_augments_true_appends_augments():
     from crafting_process.augment import Augments
 
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.register_augment("mk2", Augments.mul_outputs(2))
     lib.add_from_text("""
         1 widget | press
@@ -439,7 +474,7 @@ def single_multi_output_provider():
     smelt: 3 ore -> 2 iron + 1 slag   (slag is an unwanted byproduct)
     press: 2 iron -> 1 widget
     """
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.add_from_text("""
         2 iron + 1 slag | smelt
         3 ore
@@ -457,7 +492,7 @@ def two_direct_providers():
     make_a: 3 iron -> 1 widget
     make_b: 3 copper -> 1 widget
     """
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.add_from_text("""
         1 widget | make_a
         3 iron
@@ -473,7 +508,7 @@ def two_providers_one_with_byproduct():
     """Two iron providers: one clean, one with a byproduct.
     The byproduct distinguishes the two graphs.
     """
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.add_from_text("""
         2 iron | smelt_clean
         3 ore
@@ -599,7 +634,7 @@ def test_two_providers_one_graph_has_slag(two_providers_one_with_byproduct):
 @pytest.fixture
 def two_single_output_providers():
     """Two independent single-output iron providers feeding a press."""
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.add_from_text("""
         2 iron | smelt_a
         3 ore_a
@@ -616,7 +651,7 @@ def two_single_output_providers():
 @pytest.fixture
 def two_non_overlapping_multi_output_providers():
     """Two iron providers each with a unique byproduct (no output-kind overlap)."""
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.add_from_text("""
         2 iron + 1 slag_a | smelt_a
         3 ore_a
@@ -637,7 +672,7 @@ def overlapping_multi_output_providers():
     Bug: _production_graphs appends each provider once per desired kind it
     satisfies, so proc_a appears at index 0 (for iron) AND index 2 (for copper),
     producing degenerate combos that instantiate the same process twice."""
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.add_from_text("""
         2 iron + 1 copper + 3 slag_a | process_a
         5 ore_a
@@ -655,7 +690,7 @@ def overlapping_multi_output_providers():
 def loop_library():
     """Circular dependency: widget → iron → copper → iron.
     No loop detection exists, so production_graphs recurses infinitely."""
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.add_from_text("""
         1 iron | smelt
         1 copper
@@ -672,7 +707,7 @@ def loop_library():
 @pytest.fixture
 def branching_library():
     """Two paths to widget: a direct one-step process and a two-step chain."""
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.add_from_text("""
         1 widget | direct
         2 raw
@@ -891,7 +926,7 @@ def test_branching_library_direct_path_has_shallower_depth(branching_library):
 def combo_provider_library():
     """One process producing both iron and copper; consumer needs both.
     Tests that a multi-output provider is not indexed twice (dedup fix)."""
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.add_from_text("""
         2 iron + 1 copper | mine_combo
         5 ore
@@ -970,7 +1005,7 @@ def test_combo_provider_analyze_graph_runs(combo_provider_library):
 def shared_intermediate_library():
     """make_x (produces 2X) feeds both make_y (needs 1X) and make_z (needs 1X).
     Tests that a single upstream process connects to multiple consumers."""
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.add_from_text("""
         2 X | make_x
         3 ore_a
@@ -1058,7 +1093,7 @@ def gadget_library():
     """3 independent providers per kind (iron/copper/glass), 1 assembler.
     At max_overlap=2: one provider per kind, all combos of 2 providers per kind.
     At max_overlap=3: adds the combo using all 3 providers for every kind."""
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.add_from_text("""
         2 iron | smelt_a
         3 ore_a
@@ -1142,7 +1177,7 @@ def augmented_iron_library():
     """smelt (original), smelt @mk2, smelt @mk3; press to widget (no augments)."""
     from crafting_process.augment import Augments
 
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.register_augment("mk2", Augments.mul_speed(2.0))
     lib.register_augment("mk3", Augments.mul_speed(3.0))
     # press comes before the @-block so it is not augmented
@@ -1388,7 +1423,7 @@ def test_plan_shared_ingredient_does_not_recurse_infinitely():
     import sys
     from crafting_process.orchestration import plan, R
 
-    lib = ProcessLibrary(text=_SHARED_INGREDIENT_RECIPES)
+    lib = ProcessLibrary("batch", text=_SHARED_INGREDIENT_RECIPES)
     old_limit = sys.getrecursionlimit()
     sys.setrecursionlimit(300)  # low enough to fail fast if the bug recurs
     try:

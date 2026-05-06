@@ -1,16 +1,33 @@
 import pytest
 
-from crafting_process.process import describe_process, Ingredients, Process
+from crafting_process.process import (
+    describe_process,
+    Ingredients,
+    Process,
+    BatchProcess,
+    ContinuousProcess,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def make_process(
+def make_batch(
     outputs="2 widget", inputs="3 iron + 1 copper", duration=4.0, process="stamping"
 ):
-    return Process(
+    return BatchProcess(
+        outputs=Ingredients.parse(outputs),
+        inputs=Ingredients.parse(inputs),
+        duration=duration,
+        process=process,
+    )
+
+
+def make_continuous(
+    outputs="2 widget", inputs="3 iron + 1 copper", duration=4.0, process="stamping"
+):
+    return ContinuousProcess(
         outputs=Ingredients.parse(outputs),
         inputs=Ingredients.parse(inputs),
         duration=duration,
@@ -88,7 +105,6 @@ def test_ingredients_parse_normalizes_spaces_around_plus():
 
 
 def test_ingredients_double_space_same_as_single_space():
-    # Both spellings must resolve to the same ingredient so arithmetic works
     a = Ingredients.parse("3  iron  ore")
     b = Ingredients.parse("2 iron ore")
     assert (a + b)["iron ore"] == 5
@@ -100,76 +116,151 @@ def test_ingredients_tabs_treated_as_spaces():
 
 
 # ---------------------------------------------------------------------------
-# Process construction
+# Process base class — cannot be instantiated directly
 # ---------------------------------------------------------------------------
 
 
-def test_process_stores_outputs_and_inputs():
-    p = make_process()
+def test_process_direct_instantiation_raises():
+    with pytest.raises(TypeError, match="cannot be instantiated directly"):
+        Process(outputs=Ingredients.parse("1 widget"))
+
+
+# ---------------------------------------------------------------------------
+# BatchProcess construction
+# ---------------------------------------------------------------------------
+
+
+def test_batch_process_stores_outputs_and_inputs():
+    p = make_batch()
     assert p.outputs["widget"] == 2
     assert p.inputs["iron"] == 3
     assert p.inputs["copper"] == 1
 
 
-def test_process_no_inputs_defaults_to_zero():
-    p = Process(outputs=Ingredients.parse("1 widget"))
+def test_batch_process_no_inputs_defaults_to_zero():
+    p = BatchProcess(outputs=Ingredients.parse("1 widget"))
     assert p.inputs == Ingredients.zero()
 
 
-def test_process_duration_stored():
-    p = make_process(duration=10.0)
+def test_batch_process_duration_stored():
+    p = make_batch(duration=10.0)
     assert p.duration == 10.0
 
 
-def test_process_name_stored():
-    p = make_process(process="forging")
+def test_batch_process_duration_optional():
+    p = BatchProcess(outputs=Ingredients.parse("1 widget"))
+    assert p.duration is None
+
+
+def test_batch_process_name_stored():
+    p = make_batch(process="forging")
     assert p.process == "forging"
 
 
 # ---------------------------------------------------------------------------
-# Process.transfer
+# ContinuousProcess construction
+# ---------------------------------------------------------------------------
+
+
+def test_continuous_process_stores_outputs_and_inputs():
+    p = make_continuous()
+    assert p.outputs["widget"] == 2
+    assert p.inputs["iron"] == 3
+
+
+def test_continuous_process_duration_stored():
+    p = make_continuous(duration=8.0)
+    assert p.duration == 8.0
+
+
+def test_continuous_process_requires_duration():
+    with pytest.raises(ValueError, match="requires a duration"):
+        ContinuousProcess(outputs=Ingredients.parse("1 widget"))
+
+
+def test_continuous_process_requires_duration_none_explicit():
+    with pytest.raises(ValueError, match="requires a duration"):
+        ContinuousProcess(outputs=Ingredients.parse("1 widget"), duration=None)
+
+
+# ---------------------------------------------------------------------------
+# BatchProcess.exchange
+# ---------------------------------------------------------------------------
+
+
+def test_batch_exchange_equals_transfer():
+    p = make_batch(outputs="4 widget", inputs="2 iron", duration=2.0)
+    assert p.exchange["widget"] == pytest.approx(4.0)
+    assert p.exchange["iron"] == pytest.approx(-2.0)
+
+
+def test_batch_exchange_no_duration():
+    p = BatchProcess(outputs=Ingredients.parse("1 widget"), inputs=Ingredients.parse("2 iron"))
+    assert p.exchange["widget"] == 1
+    assert p.exchange["iron"] == -2
+
+
+# ---------------------------------------------------------------------------
+# ContinuousProcess.exchange
+# ---------------------------------------------------------------------------
+
+
+def test_continuous_exchange_equals_transfer_rate():
+    p = make_continuous(outputs="4 widget", inputs="2 iron", duration=2.0)
+    assert p.exchange["widget"] == pytest.approx(2.0)
+    assert p.exchange["iron"] == pytest.approx(-1.0)
+
+
+def test_continuous_exchange_duration_one():
+    p = make_continuous(outputs="4 widget", inputs="2 iron", duration=1.0)
+    assert p.exchange["widget"] == pytest.approx(4.0)
+    assert p.exchange["iron"] == pytest.approx(-2.0)
+
+
+# ---------------------------------------------------------------------------
+# Process.transfer (deprecated but retained)
 # ---------------------------------------------------------------------------
 
 
 def test_transfer_is_outputs_minus_inputs():
-    p = make_process(outputs="2 widget", inputs="3 iron", duration=1.0, process="x")
+    p = make_batch(outputs="2 widget", inputs="3 iron", duration=1.0, process="x")
     t = p.transfer
     assert t["widget"] == 2
     assert t["iron"] == -3
 
 
 # ---------------------------------------------------------------------------
-# Process.transfer_rate
+# Process.transfer_rate (deprecated but retained)
 # ---------------------------------------------------------------------------
 
 
 def test_transfer_rate_divides_by_duration():
-    p = make_process(outputs="4 widget", inputs="2 iron", duration=2.0, process="x")
+    p = make_batch(outputs="4 widget", inputs="2 iron", duration=2.0, process="x")
     r = p.transfer_rate
     assert r["widget"] == pytest.approx(2.0)
     assert r["iron"] == pytest.approx(-1.0)
 
 
 def test_transfer_rate_raises_without_duration():
-    p = Process(outputs=Ingredients.parse("1 widget"))
+    p = BatchProcess(outputs=Ingredients.parse("1 widget"))
     with pytest.raises(ValueError, match="no duration"):
         _ = p.transfer_rate
 
 
 # ---------------------------------------------------------------------------
-# Process.transfer_quantity
+# Process.transfer_quantity (deprecated but retained)
 # ---------------------------------------------------------------------------
 
 
 def test_transfer_quantity_batch_true_returns_transfer():
-    p = make_process(outputs="4 widget", inputs="2 iron", duration=2.0, process="x")
+    p = make_batch(outputs="4 widget", inputs="2 iron", duration=2.0, process="x")
     q = p.transfer_quantity(batch=True)
     assert q["widget"] == 4
     assert q["iron"] == -2
 
 
 def test_transfer_quantity_batch_false_returns_rate():
-    p = make_process(outputs="4 widget", inputs="2 iron", duration=2.0, process="x")
+    p = make_batch(outputs="4 widget", inputs="2 iron", duration=2.0, process="x")
     q = p.transfer_quantity(batch=False)
     assert q["widget"] == pytest.approx(2.0)
 
@@ -180,12 +271,12 @@ def test_transfer_quantity_batch_false_returns_rate():
 
 
 def test_describe_uses_outputs_and_process_name():
-    p = make_process(outputs="2 widget", process="stamping")
+    p = make_batch(outputs="2 widget", process="stamping")
     assert p.describe() == "widget via stamping"
 
 
 def test_describe_no_process_name():
-    p = Process(outputs=Ingredients.parse("1 widget"))
+    p = BatchProcess(outputs=Ingredients.parse("1 widget"))
     assert p.describe() == "widget"
 
 
@@ -194,11 +285,26 @@ def test_describe_no_process_name():
 # ---------------------------------------------------------------------------
 
 
-def test_from_transfer_splits_positive_and_negative():
+def test_batch_from_transfer_splits_positive_and_negative():
     transfer = Ingredients.parse("2 widget") - Ingredients.parse("3 iron")
-    p = Process.from_transfer(transfer)
+    p = BatchProcess.from_transfer(transfer)
     assert p.outputs["widget"] == 2
     assert p.inputs["iron"] == 3
+    assert isinstance(p, BatchProcess)
+
+
+def test_continuous_from_transfer_splits_positive_and_negative():
+    transfer = Ingredients.parse("2 widget") - Ingredients.parse("3 iron")
+    p = ContinuousProcess.from_transfer(transfer, duration=2.0)
+    assert p.outputs["widget"] == 2
+    assert p.inputs["iron"] == 3
+    assert isinstance(p, ContinuousProcess)
+
+
+def test_process_from_transfer_raises():
+    transfer = Ingredients.parse("2 widget") - Ingredients.parse("3 iron")
+    with pytest.raises(TypeError, match="cannot be instantiated directly"):
+        Process.from_transfer(transfer)
 
 
 # ---------------------------------------------------------------------------
@@ -207,7 +313,7 @@ def test_from_transfer_splits_positive_and_negative():
 
 
 def test_copy_produces_equal_process():
-    p = make_process()
+    p = make_batch()
     c = p.copy()
     assert c.outputs["widget"] == p.outputs["widget"]
     assert c.inputs["iron"] == p.inputs["iron"]
@@ -215,8 +321,20 @@ def test_copy_produces_equal_process():
     assert c.process == p.process
 
 
+def test_copy_preserves_subclass_batch():
+    p = make_batch()
+    c = p.copy()
+    assert isinstance(c, BatchProcess)
+
+
+def test_copy_preserves_subclass_continuous():
+    p = make_continuous()
+    c = p.copy()
+    assert isinstance(c, ContinuousProcess)
+
+
 def test_copy_with_new_name():
-    p = make_process(process="stamping")
+    p = make_batch(process="stamping")
     c = p.copy(new_name="forging")
     assert c.process == "forging"
     assert p.process == "stamping"
@@ -228,14 +346,14 @@ def test_copy_with_new_name():
 
 
 def test_repr_includes_process_name_and_duration():
-    p = make_process(process="stamping", duration=4.0)
+    p = make_batch(process="stamping", duration=4.0)
     r = repr(p)
     assert "stamping" in r
     assert "4.0" in r
 
 
 def test_repr_no_process_name_uses_fallback():
-    p = Process(outputs=Ingredients.parse("1 widget"))
+    p = BatchProcess(outputs=Ingredients.parse("1 widget"))
     assert "Process" in repr(p)
 
 
@@ -245,12 +363,12 @@ def test_repr_no_process_name_uses_fallback():
 
 
 def test_annotations_default_empty():
-    p = Process(outputs=Ingredients.parse("1 widget"))
+    p = BatchProcess(outputs=Ingredients.parse("1 widget"))
     assert p.annotations == {}
 
 
 def test_annotations_stored():
-    p = Process(
+    p = BatchProcess(
         outputs=Ingredients.parse("1 widget"), annotations={"tier": 2, "energy": 150.0}
     )
     assert p.annotations["tier"] == 2
@@ -258,26 +376,26 @@ def test_annotations_stored():
 
 
 def test_annotations_copy_preserved():
-    p = Process(outputs=Ingredients.parse("1 widget"), annotations={"tier": 2})
+    p = BatchProcess(outputs=Ingredients.parse("1 widget"), annotations={"tier": 2})
     c = p.copy()
     assert c.annotations == {"tier": 2}
 
 
 def test_annotations_copy_is_independent():
-    p = Process(outputs=Ingredients.parse("1 widget"), annotations={"tier": 2})
+    p = BatchProcess(outputs=Ingredients.parse("1 widget"), annotations={"tier": 2})
     c = p.copy()
     c.annotations["tier"] = 99
     assert p.annotations["tier"] == 2
 
 
 def test_annotations_in_to_dict():
-    p = Process(outputs=Ingredients.parse("1 widget"), annotations={"tier": 2})
+    p = BatchProcess(outputs=Ingredients.parse("1 widget"), annotations={"tier": 2})
     assert p.to_dict()["annotations"] == {"tier": 2}
 
 
 def test_annotations_from_transfer():
     transfer = Ingredients.parse("2 widget") - Ingredients.parse("3 iron")
-    p = Process.from_transfer(transfer, annotations={"tier": 1})
+    p = BatchProcess.from_transfer(transfer, annotations={"tier": 1})
     assert p.annotations == {"tier": 1}
 
 
@@ -287,32 +405,32 @@ def test_annotations_from_transfer():
 
 
 def test_applied_augments_default_empty():
-    p = Process(outputs=Ingredients.parse("1 widget"))
+    p = BatchProcess(outputs=Ingredients.parse("1 widget"))
     assert p.applied_augments == []
 
 
 def test_applied_augments_stored():
-    p = Process(
+    p = BatchProcess(
         outputs=Ingredients.parse("1 widget"), applied_augments=["mk2", "speed"]
     )
     assert p.applied_augments == ["mk2", "speed"]
 
 
 def test_applied_augments_copy_preserved():
-    p = Process(outputs=Ingredients.parse("1 widget"), applied_augments=["mk2"])
+    p = BatchProcess(outputs=Ingredients.parse("1 widget"), applied_augments=["mk2"])
     c = p.copy()
     assert c.applied_augments == ["mk2"]
 
 
 def test_applied_augments_copy_is_independent():
-    p = Process(outputs=Ingredients.parse("1 widget"), applied_augments=["mk2"])
+    p = BatchProcess(outputs=Ingredients.parse("1 widget"), applied_augments=["mk2"])
     c = p.copy()
     c.applied_augments.append("extra")
     assert p.applied_augments == ["mk2"]
 
 
 def test_applied_augments_in_to_dict():
-    p = Process(outputs=Ingredients.parse("1 widget"), applied_augments=["mk2"])
+    p = BatchProcess(outputs=Ingredients.parse("1 widget"), applied_augments=["mk2"])
     assert p.to_dict()["applied_augments"] == ["mk2"]
 
 
@@ -322,15 +440,15 @@ def test_applied_augments_in_to_dict():
 
 
 def test_copy_override_duration():
-    p = make_process(duration=4.0)
+    p = make_batch(duration=4.0)
     c = p.copy(duration=2.0)
     assert c.duration == pytest.approx(2.0)
     assert p.duration == pytest.approx(4.0)
 
 
 def test_copy_override_preserves_annotations():
-    p = make_process(duration=4.0)
-    p2 = Process(
+    p = make_batch(duration=4.0)
+    p2 = BatchProcess(
         outputs=p.outputs,
         inputs=p.inputs,
         duration=p.duration,
@@ -343,7 +461,7 @@ def test_copy_override_preserves_annotations():
 
 
 def test_copy_override_preserves_applied_augments():
-    p = Process(
+    p = BatchProcess(
         outputs=Ingredients.parse("1 widget"),
         applied_augments=["mk2"],
     )
@@ -352,7 +470,7 @@ def test_copy_override_preserves_applied_augments():
 
 
 def test_copy_override_applied_augments():
-    p = Process(outputs=Ingredients.parse("1 widget"), applied_augments=["mk2"])
+    p = BatchProcess(outputs=Ingredients.parse("1 widget"), applied_augments=["mk2"])
     c = p.copy(applied_augments=["mk2", "speed"])
     assert c.applied_augments == ["mk2", "speed"]
     assert p.applied_augments == ["mk2"]

@@ -9,7 +9,7 @@ from crafting_process.library import (
     ProcessPredicates,
     ProcessLibrary,
 )
-from crafting_process.process import Ingredients, Process
+from crafting_process.process import Ingredients, Process, BatchProcess
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -18,7 +18,7 @@ from crafting_process.process import Ingredients, Process
 
 @pytest.fixture
 def library():
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.add_from_text("""
         widget | stamping duration=4
         3 iron + 1 copper
@@ -143,20 +143,20 @@ def test_header_process_name_with_spaces_and_duration():
 
 
 def test_library_process_name_with_spaces_registered():
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.add_from_text("1 iron_bar | smelt iron\n6 iron_ore\n")
     assert any("smelt iron" in key for key in lib.recipes)
 
 
 def test_library_process_name_with_spaces_lookup():
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.add_from_text("1 iron_bar | smelt iron\n6 iron_ore\n")
     results = lib.using("smelt iron")
     assert len(results) == 1
 
 
 def test_filter_returns_library():
-    lib = ProcessLibrary(text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
+    lib = ProcessLibrary("batch", text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
     result = lib.filter(lambda p: "iron" in p.outputs.nonzero_components)
     assert isinstance(result, ProcessLibrary)
 
@@ -509,7 +509,7 @@ def test_library_recipe_names_include_process(library):
 
 
 def test_mkname_disambiguates_duplicate_names():
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     # Two processes with identical outputs and no process name get disambiguated
     lib.add_from_text("widget\n3 iron\n\nwidget\n5 iron")
     assert "widget" in lib.recipes
@@ -517,7 +517,7 @@ def test_mkname_disambiguates_duplicate_names():
 
 
 def test_mkname_disambiguates_sequentially():
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.add_from_text("widget\n3 iron\n\nwidget\n5 iron\n\nwidget\n7 iron")
     assert "widget" in lib.recipes
     assert "widget 2" in lib.recipes
@@ -576,7 +576,7 @@ def test_filter_with_custom_predicate(library):
 
 
 def make_process(outputs, inputs="", process=None, annotations=None):
-    return Process(
+    return BatchProcess(
         outputs=Ingredients.parse(outputs),
         inputs=Ingredients.parse(inputs) if inputs else Ingredients.zero(),
         process=process,
@@ -777,7 +777,7 @@ def test_annotation_matches_composed_with_outputs_part():
 
 def test_lib_filter_by_annotation(library):
     # library fixture has no annotations, so build a fresh one
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.add_from_text("""
         2 iron | smelt_a [tier=1]
         3 ore_a
@@ -794,7 +794,7 @@ def test_lib_filter_by_annotation(library):
 
 
 def test_lib_filter_annotation_and_output():
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.add_from_text("""
         2 iron | smelt_a [tier=1]
         3 ore_a
@@ -824,7 +824,7 @@ def test_lib_filter_annotation_and_output():
 def test_register_augment_stored():
     from crafting_process.augment import Augments
 
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     fn = Augments.mul_speed(2.0)
     lib.register_augment("fast", fn)
     assert "fast" in lib._augments
@@ -840,7 +840,7 @@ def _aug_lib():
     """Library with a registered augment for use in augment tests."""
     from crafting_process.augment import Augments
 
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.register_augment("mk2", Augments.mul_speed(2.0))
     lib.register_augment("mk3", Augments.mul_speed(3.0))
     lib.register_augment("prod", Augments.mul_outputs(1.1))
@@ -1079,14 +1079,14 @@ def test_with_augment_filter_preserves_augments_registry():
 
 
 def test_constructor_text_param():
-    lib = ProcessLibrary(text="1 widget | press\n2 iron\n")
+    lib = ProcessLibrary("batch", text="1 widget | press\n2 iron\n")
     assert any("widget" in n for n in lib.recipes)
 
 
 def test_constructor_path_param(tmp_path):
     p = tmp_path / "r.txt"
     p.write_text("1 widget | press\n2 iron\n")
-    lib = ProcessLibrary(path=str(p))
+    lib = ProcessLibrary("batch", path=str(p))
     assert any("widget" in n for n in lib.recipes)
 
 
@@ -1094,13 +1094,19 @@ def test_constructor_raises_if_both_text_and_path(tmp_path):
     p = tmp_path / "r.txt"
     p.write_text("1 widget:\n2 iron\n")
     with pytest.raises(ValueError):
-        ProcessLibrary(text="1 widget:\n2 iron\n", path=str(p))
+        ProcessLibrary("batch", text="1 widget:\n2 iron\n", path=str(p))
+
+
+def test_constructor_invalid_mode_raises():
+    with pytest.raises(ValueError, match="mode must be"):
+        ProcessLibrary("invalid")
 
 
 def test_constructor_augments_dict_applied():
     from crafting_process.augment import Augments
 
     lib = ProcessLibrary(
+        "batch",
         augments={"fast": Augments.mul_speed(2)},
         text="@fast\n\n1 widget | press duration=1\n2 iron\n",
     )
@@ -1115,7 +1121,7 @@ def test_constructor_augments_dict_applied():
 
 
 def test_filtered_returns_matching_recipes():
-    lib = ProcessLibrary(text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
+    lib = ProcessLibrary("batch", text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
     filtered = lib.filtered(lambda p: "iron" in p.outputs.nonzero_components)
     assert all(
         "iron" in p.outputs.nonzero_components for p in filtered.recipes.values()
@@ -1123,10 +1129,16 @@ def test_filtered_returns_matching_recipes():
     assert len(filtered.recipes) == 1
 
 
+def test_filtered_preserves_mode():
+    lib = ProcessLibrary("batch", text="1 iron | smelt\n2 ore\n")
+    filtered = lib.filtered(lambda p: True)
+    assert filtered.mode == "batch"
+
+
 def test_filtered_preserves_augment_registry():
     from crafting_process.augment import Augments
 
-    lib = ProcessLibrary()
+    lib = ProcessLibrary("batch")
     lib.register_augment("fast", Augments.mul_speed(2))
     lib.add_from_text("1 widget | press duration=1\n2 iron\n")
     filtered = lib.filtered(lambda p: True)
@@ -1136,7 +1148,7 @@ def test_filtered_preserves_augment_registry():
 def test_filtered_with_pred_operators():
     from crafting_process.library import P
 
-    lib = ProcessLibrary(text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
+    lib = ProcessLibrary("batch", text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
     filtered = lib.filtered(P.produces("iron") | P.produces("widget"))
     assert len(filtered.recipes) == 2
 
@@ -1147,16 +1159,16 @@ def test_filtered_with_pred_operators():
 
 
 def test_merge_combines_recipes():
-    lib_a = ProcessLibrary(text="1 iron | smelt\n2 ore\n")
-    lib_b = ProcessLibrary(text="1 widget | press\n2 iron\n")
+    lib_a = ProcessLibrary("batch", text="1 iron | smelt\n2 ore\n")
+    lib_b = ProcessLibrary("batch", text="1 widget | press\n2 iron\n")
     merged = lib_a | lib_b
     assert any("iron" in n for n in merged.recipes)
     assert any("widget" in n for n in merged.recipes)
 
 
 def test_merge_right_wins_on_collision():
-    lib_a = ProcessLibrary(text="1 iron | smelt\n2 ore\n")
-    lib_b = ProcessLibrary(text="1 iron | smelt\n5 ore\n")
+    lib_a = ProcessLibrary("batch", text="1 iron | smelt\n2 ore\n")
+    lib_b = ProcessLibrary("batch", text="1 iron | smelt\n5 ore\n")
     merged = lib_a | lib_b
     iron_procs = [
         p for p in merged.recipes.values() if "iron" in p.outputs.nonzero_components
@@ -1167,13 +1179,27 @@ def test_merge_right_wins_on_collision():
 def test_merge_preserves_augment_registries():
     from crafting_process.augment import Augments
 
-    lib_a = ProcessLibrary()
+    lib_a = ProcessLibrary("batch")
     lib_a.register_augment("fast", Augments.mul_speed(2))
-    lib_b = ProcessLibrary()
+    lib_b = ProcessLibrary("batch")
     lib_b.register_augment("slow", Augments.mul_speed(0.5))
     merged = lib_a | lib_b
     assert "fast" in merged._augments
     assert "slow" in merged._augments
+
+
+def test_merge_different_modes_raises():
+    lib_a = ProcessLibrary("batch", text="1 iron | smelt\n2 ore\n")
+    lib_b = ProcessLibrary("continuous", text="1 iron | smelt duration=2\n2 ore\n")
+    with pytest.raises(ValueError, match="different modes"):
+        lib_a | lib_b
+
+
+def test_merge_preserves_mode():
+    lib_a = ProcessLibrary("batch", text="1 iron | smelt\n2 ore\n")
+    lib_b = ProcessLibrary("batch", text="1 widget | press\n2 iron\n")
+    merged = lib_a | lib_b
+    assert merged.mode == "batch"
 
 
 # ---------------------------------------------------------------------------
@@ -1184,7 +1210,7 @@ def test_merge_preserves_augment_registries():
 def test_P_produces():
     from crafting_process.library import P
 
-    lib = ProcessLibrary(text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
+    lib = ProcessLibrary("batch", text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
     filtered = lib.filtered(P.produces("iron"))
     assert len(filtered.recipes) == 1
 
@@ -1192,7 +1218,7 @@ def test_P_produces():
 def test_P_consumes():
     from crafting_process.library import P
 
-    lib = ProcessLibrary(text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
+    lib = ProcessLibrary("batch", text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
     filtered = lib.filtered(P.consumes("iron"))
     assert len(filtered.recipes) == 1
 
@@ -1200,7 +1226,7 @@ def test_P_consumes():
 def test_P_process_is():
     from crafting_process.library import P
 
-    lib = ProcessLibrary(text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
+    lib = ProcessLibrary("batch", text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
     filtered = lib.filtered(P.process_is("smelt"))
     assert len(filtered.recipes) == 1
 
@@ -1210,6 +1236,7 @@ def test_P_has_augment():
     from crafting_process.augment import Augments
 
     lib = ProcessLibrary(
+        "batch",
         augments={"mk2": Augments.mul_speed(1.5)},
         text="@mk2\n\n1 widget | press duration=1\n2 iron\n",
     )
@@ -1220,7 +1247,7 @@ def test_P_has_augment():
 def test_P_and_operator():
     from crafting_process.library import P
 
-    lib = ProcessLibrary(text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
+    lib = ProcessLibrary("batch", text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
     pred = P.produces("iron") & P.consumes("ore")
     filtered = lib.filtered(pred)
     assert len(filtered.recipes) == 1
@@ -1229,7 +1256,7 @@ def test_P_and_operator():
 def test_P_or_operator():
     from crafting_process.library import P
 
-    lib = ProcessLibrary(text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
+    lib = ProcessLibrary("batch", text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
     filtered = lib.filtered(P.produces("iron") | P.produces("widget"))
     assert len(filtered.recipes) == 2
 
@@ -1237,8 +1264,62 @@ def test_P_or_operator():
 def test_P_invert_operator():
     from crafting_process.library import P
 
-    lib = ProcessLibrary(text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
+    lib = ProcessLibrary("batch", text="1 iron | smelt\n2 ore\n\n1 widget | press\n2 iron\n")
     filtered = lib.filtered(~P.produces("iron"))
     assert all(
         "iron" not in p.outputs.nonzero_components for p in filtered.recipes.values()
     )
+
+
+# ---------------------------------------------------------------------------
+# mode and process_class
+# ---------------------------------------------------------------------------
+
+
+def test_library_mode_batch():
+    lib = ProcessLibrary("batch")
+    assert lib.mode == "batch"
+
+
+def test_library_mode_continuous():
+    lib = ProcessLibrary("continuous")
+    assert lib.mode == "continuous"
+
+
+def test_library_process_class_batch():
+    from crafting_process.process import BatchProcess
+
+    lib = ProcessLibrary("batch")
+    assert lib.process_class is BatchProcess
+
+
+def test_library_process_class_continuous():
+    from crafting_process.process import ContinuousProcess
+
+    lib = ProcessLibrary("continuous")
+    assert lib.process_class is ContinuousProcess
+
+
+def test_library_batch_produces_batch_processes():
+    from crafting_process.process import BatchProcess
+
+    lib = ProcessLibrary("batch", text="1 widget | press\n2 iron\n")
+    assert all(isinstance(p, BatchProcess) for p in lib.recipes.values())
+
+
+def test_library_continuous_produces_continuous_processes():
+    from crafting_process.process import ContinuousProcess
+
+    lib = ProcessLibrary("continuous", text="1 widget | press duration=2\n2 iron\n")
+    assert all(isinstance(p, ContinuousProcess) for p in lib.recipes.values())
+
+
+def test_library_continuous_no_duration_raises():
+    with pytest.raises(ValueError, match="requires a duration"):
+        ProcessLibrary("continuous", text="1 widget | press\n2 iron\n")
+
+
+def test_with_augment_filter_propagates_mode():
+    lib = ProcessLibrary("batch", text="1 iron | smelt\n2 ore\n")
+    filtered = lib.with_augment_filter()
+    assert filtered.mode == "batch"

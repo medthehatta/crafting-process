@@ -1,11 +1,11 @@
 import pytest
 
 from crafting_process.augment import Augments
-from crafting_process.process import Ingredients, Process
+from crafting_process.process import Ingredients, BatchProcess
 
 
 def make_process(outputs="2 widget", inputs="3 iron", duration=4.0, process="stamping"):
-    return Process(
+    return BatchProcess(
         outputs=Ingredients.parse(outputs),
         inputs=Ingredients.parse(inputs),
         duration=duration,
@@ -14,7 +14,7 @@ def make_process(outputs="2 widget", inputs="3 iron", duration=4.0, process="sta
 
 
 def make_annotated(annotations, applied_augments=None):
-    return Process(
+    return BatchProcess(
         outputs=Ingredients.parse("2 widget"),
         inputs=Ingredients.parse("3 iron"),
         duration=4.0,

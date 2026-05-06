@@ -7,7 +7,7 @@ from cytoolz import unique
 from cytoolz import interleave
 
 from .graph import GraphBuilder
-from .process import Process, Ingredients
+from .process import Process, Ingredients, ContinuousProcess
 from .solver import best_milp_sequence
 from .utils import only as _only
 from .library import Pred
@@ -75,8 +75,7 @@ def analyze_graph(graph, num_keep=4):
     output_process = graph.processes[output_process_name]
     desired = output_process.inputs
 
-    # FIXME: This is batch specific
-    milps = batch_milps(graph)
+    milps = exchange_milps(graph)
 
     output_depths = graph.output_depths()
 
@@ -91,9 +90,8 @@ def analyze_graph(graph, num_keep=4):
         count_by_process = {name: count for (count, _, name) in m["counts"]}
         dangling = graph.open_outputs + graph.open_inputs
         transfer = Ingredients.sum(
-            # FIXME: This is batch specific
             count_by_process[name]
-            * graph.processes[name].transfer_quantity(True).project(kind)
+            * graph.processes[name].exchange.project(kind)
             for (name, kind) in dangling
         )
 
@@ -142,6 +140,21 @@ def show_graph(graph):
 
 def batch_milps(graph):
     m = graph.build_batch_matrix()
+    seq = best_milp_sequence(m["matrix"], m["processes"])
+    return [
+        {
+            "leakage": leak,
+            "counts": [
+                (count, graph.processes[name].describe(), name)
+                for (name, count) in counts.items()
+            ],
+        }
+        for (leak, counts) in seq
+    ]
+
+
+def exchange_milps(graph):
+    m = graph.build_exchange_matrix()
     seq = best_milp_sequence(m["matrix"], m["processes"])
     return [
         {
@@ -205,7 +218,9 @@ def production_graphs(
             only_augments=only_augments,
         )
     new_transfer = Ingredients.parse("_") - transfer
-    g = GraphBuilder.from_process(Process.from_transfer(new_transfer))
+    process_class = recipes.process_class
+    sink_kwargs = {"duration": 1} if process_class is ContinuousProcess else {}
+    g = GraphBuilder.from_process(process_class.from_transfer(new_transfer, **sink_kwargs))
     yield from _production_graphs(
         recipes,
         g,

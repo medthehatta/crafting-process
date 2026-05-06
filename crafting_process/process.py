@@ -22,6 +22,10 @@ def describe_process(output_names, process=None):
 
 
 class Process:
+    """Abstract base for all process types.
+
+    Do not instantiate directly — use BatchProcess or ContinuousProcess.
+    """
 
     @classmethod
     def from_transfer(cls, transfer, **kwargs):
@@ -38,7 +42,13 @@ class Process:
             **kwargs,
         )
 
-    def __init__(
+    def __init__(self, *args, **kwargs):
+        raise TypeError(
+            "Process cannot be instantiated directly; "
+            "use BatchProcess or ContinuousProcess instead"
+        )
+
+    def _init(
         self,
         outputs,
         inputs=None,
@@ -47,7 +57,6 @@ class Process:
         annotations=None,
         applied_augments=None,
     ):
-        # This is just metadata saying what kind of process it is
         self.process = process
         self.outputs = outputs
         self.inputs = inputs or Ingredients.zero()
@@ -67,10 +76,12 @@ class Process:
             ),
         )
 
+    # deprecated — use exchange instead; will be removed once exchange is validated
     @property
     def transfer(self):
         return self.outputs - self.inputs
 
+    # deprecated — use exchange instead; will be removed once exchange is validated
     @property
     def transfer_rate(self):
         if self.duration:
@@ -78,6 +89,7 @@ class Process:
         else:
             raise ValueError("Process which has no duration has no transfer rate")
 
+    # deprecated — use exchange instead; will be removed once exchange is validated
     def transfer_quantity(self, batch=False):
         if batch:
             return self.transfer
@@ -108,3 +120,62 @@ class Process:
             return f"{process}[{self.transfer}]/{self.duration}"
         else:
             return f"{process}[{self.transfer}]"
+
+
+class BatchProcess(Process):
+    """A process that runs sequentially; exchange returns the absolute transfer."""
+
+    def __init__(
+        self,
+        outputs,
+        inputs=None,
+        duration=None,
+        process=None,
+        annotations=None,
+        applied_augments=None,
+    ):
+        self._init(
+            outputs,
+            inputs=inputs,
+            duration=duration,
+            process=process,
+            annotations=annotations,
+            applied_augments=applied_augments,
+        )
+
+    @property
+    def exchange(self):
+        return self.transfer
+
+
+class ContinuousProcess(Process):
+    """A process that runs in parallel; exchange returns the transfer rate.
+
+    duration is mandatory.
+    """
+
+    def __init__(
+        self,
+        outputs,
+        inputs=None,
+        duration=None,
+        process=None,
+        annotations=None,
+        applied_augments=None,
+    ):
+        if duration is None:
+            raise ValueError(
+                "ContinuousProcess requires a duration; got duration=None"
+            )
+        self._init(
+            outputs,
+            inputs=inputs,
+            duration=duration,
+            process=process,
+            annotations=annotations,
+            applied_augments=applied_augments,
+        )
+
+    @property
+    def exchange(self):
+        return self.transfer_rate

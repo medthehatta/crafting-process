@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from crafting_process.graph import GraphBuilder
-from crafting_process.process import Ingredients, Process
+from crafting_process.process import Ingredients, BatchProcess, ContinuousProcess
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -11,7 +11,7 @@ from crafting_process.process import Ingredients, Process
 
 def make_ore_smelter():
     """3 ore -> 2 iron  (no duration — batch only)"""
-    return Process(
+    return BatchProcess(
         outputs=Ingredients.parse("2 iron"),
         inputs=Ingredients.parse("3 ore"),
     )
@@ -19,7 +19,7 @@ def make_ore_smelter():
 
 def make_widget_press():
     """2 iron -> 1 widget"""
-    return Process(
+    return BatchProcess(
         outputs=Ingredients.parse("1 widget"),
         inputs=Ingredients.parse("2 iron"),
     )
@@ -27,7 +27,7 @@ def make_widget_press():
 
 def make_widget_packager():
     """1 widget -> 1 package"""
-    return Process(
+    return BatchProcess(
         outputs=Ingredients.parse("1 package"),
         inputs=Ingredients.parse("1 widget"),
     )
@@ -35,7 +35,7 @@ def make_widget_packager():
 
 def make_ore_smelter_timed():
     """3 ore -> 2 iron, duration=2.0  →  transfer_rate[iron] = +1.0"""
-    return Process(
+    return ContinuousProcess(
         outputs=Ingredients.parse("2 iron"),
         inputs=Ingredients.parse("3 ore"),
         duration=2.0,
@@ -44,7 +44,7 @@ def make_ore_smelter_timed():
 
 def make_widget_press_timed():
     """2 iron -> 1 widget, duration=1.0  →  transfer_rate[iron] = -2.0"""
-    return Process(
+    return ContinuousProcess(
         outputs=Ingredients.parse("1 widget"),
         inputs=Ingredients.parse("2 iron"),
         duration=1.0,
@@ -53,7 +53,7 @@ def make_widget_press_timed():
 
 def make_widget_packager_timed():
     """1 widget -> 1 package, duration=4.0"""
-    return Process(
+    return ContinuousProcess(
         outputs=Ingredients.parse("1 package"),
         inputs=Ingredients.parse("1 widget"),
         duration=4.0,
@@ -123,7 +123,7 @@ def test_add_process_populates_open_inputs():
 
 
 def test_add_process_multiple_outputs():
-    p = Process(
+    p = BatchProcess(
         outputs=Ingredients.parse("1 widget + 2 scrap"),
         inputs=Ingredients.parse("3 iron"),
     )
@@ -383,18 +383,10 @@ def test_build_batch_matrix_correct_values():
 
 
 def test_build_batch_matrix_unrelated_process_is_zero():
-    # Add a third process that doesn't touch iron at all
-    g, smelter, press = two_process_graph()
-    packager = make_widget_packager()
-    # Connect press -> widget pool -> packager
-    GraphBuilder.from_process(packager, name="packager")
-    GraphBuilder.from_process(g.processes[press], name=press)
-    # Build a fresh 3-process graph
     g3 = GraphBuilder()
     g3.add_process(make_ore_smelter(), name="smelter2")
     g3.add_process(make_widget_press(), name="press2")
     g3.add_process(make_widget_packager(), name="packager2")
-    # manually connect smelter2 -> press2 via iron, press2 -> packager2 via widget
     g3._connect_process_to_process("smelter2", "press2", kind="iron")
     g3._connect_process_to_process("press2", "packager2", kind="widget")
 
@@ -403,7 +395,6 @@ def test_build_batch_matrix_unrelated_process_is_zero():
     processes = result["processes"]
     pools = result["pools"]
 
-    # find iron pool row and packager2 column
     iron_pool_name = next(p for p in pools if g3.pools[p]["kind"] == "iron")
     iron_row = pools.index(iron_pool_name)
     packager2_col = processes.index("packager2")
@@ -460,7 +451,6 @@ def test_output_depths_returns_dict():
 def test_output_depths_keys_are_process_descriptions():
     g, smelter, press = two_process_graph()
     depths = g.output_depths()
-    # process descriptions for our two processes
     expected_descs = {g.processes[p].describe() for p in [smelter, press]}
     assert set(depths.keys()) == expected_descs
 
@@ -511,8 +501,6 @@ def test_build_matrix_correct_values():
 
 
 def test_build_matrix_differs_from_batch_when_durations_differ():
-    # With duration=2 on smelter, rate is half of raw transfer —
-    # confirms build_matrix uses transfer_rate, not transfer
     g, smelter, press = two_process_graph_timed()
     batch = g.build_batch_matrix()
     cont = g.build_matrix()
@@ -553,6 +541,114 @@ def test_build_matrix_shape():
 def test_build_matrix_keys():
     g, _, _ = two_process_graph_timed()
     result = g.build_matrix()
+    assert "matrix" in result
+    assert "processes" in result
+    assert "pools" in result
+
+
+# ---------------------------------------------------------------------------
+# build_exchange_matrix — batch graphs
+# ---------------------------------------------------------------------------
+
+
+def test_build_exchange_matrix_batch_producer_is_positive():
+    g, smelter, _ = two_process_graph()
+    result = g.build_exchange_matrix()
+    matrix = result["matrix"]
+    processes = result["processes"]
+    smelter_col = processes.index(smelter)
+    iron_row = [
+        i for i, p in enumerate(result["pools"]) if g.pools[p]["kind"] == "iron"
+    ][0]
+    assert matrix[iron_row][smelter_col] > 0
+
+
+def test_build_exchange_matrix_batch_consumer_is_negative():
+    g, _, press = two_process_graph()
+    result = g.build_exchange_matrix()
+    matrix = result["matrix"]
+    processes = result["processes"]
+    press_col = processes.index(press)
+    iron_row = [
+        i for i, p in enumerate(result["pools"]) if g.pools[p]["kind"] == "iron"
+    ][0]
+    assert matrix[iron_row][press_col] < 0
+
+
+def test_build_exchange_matrix_batch_matches_build_batch_matrix():
+    # For a batch graph, exchange_matrix and batch_matrix must be identical.
+    g, smelter, press = two_process_graph()
+    batch = g.build_batch_matrix()
+    exch = g.build_exchange_matrix()
+    assert batch["matrix"] == exch["matrix"]
+    assert batch["processes"] == exch["processes"]
+    assert batch["pools"] == exch["pools"]
+
+
+def test_build_exchange_matrix_continuous_producer_is_positive():
+    g, smelter, _ = two_process_graph_timed()
+    result = g.build_exchange_matrix()
+    matrix = result["matrix"]
+    processes = result["processes"]
+    smelter_col = processes.index(smelter)
+    iron_row = [
+        i for i, p in enumerate(result["pools"]) if g.pools[p]["kind"] == "iron"
+    ][0]
+    assert matrix[iron_row][smelter_col] > 0
+
+
+def test_build_exchange_matrix_continuous_matches_build_matrix():
+    # For a continuous graph, exchange_matrix and build_matrix must be identical.
+    g, smelter, press = two_process_graph_timed()
+    cont = g.build_matrix()
+    exch = g.build_exchange_matrix()
+    assert cont["matrix"] == exch["matrix"]
+    assert cont["processes"] == exch["processes"]
+    assert cont["pools"] == exch["pools"]
+
+
+def test_build_exchange_matrix_correct_values_batch():
+    # smelter: 3 ore -> 2 iron  → exchange[iron] = +2
+    # press:   2 iron -> 1 widget → exchange[iron] = -2
+    g, smelter, press = two_process_graph()
+    result = g.build_exchange_matrix()
+    matrix = result["matrix"]
+    processes = result["processes"]
+    pools = result["pools"]
+    smelter_col = processes.index(smelter)
+    press_col = processes.index(press)
+    iron_pool_name = next(p for p in pools if g.pools[p]["kind"] == "iron")
+    iron_row = pools.index(iron_pool_name)
+    assert matrix[iron_row][smelter_col] == pytest.approx(2.0)
+    assert matrix[iron_row][press_col] == pytest.approx(-2.0)
+
+
+def test_build_exchange_matrix_correct_values_continuous():
+    # smelter: 2 iron / 2.0 s  → exchange[iron] = +1.0
+    # press:   2 iron / 1.0 s  → exchange[iron] = -2.0
+    g, smelter, press = two_process_graph_timed()
+    result = g.build_exchange_matrix()
+    matrix = result["matrix"]
+    processes = result["processes"]
+    pools = result["pools"]
+    smelter_col = processes.index(smelter)
+    press_col = processes.index(press)
+    iron_pool_name = next(p for p in pools if g.pools[p]["kind"] == "iron")
+    iron_row = pools.index(iron_pool_name)
+    assert matrix[iron_row][smelter_col] == pytest.approx(1.0)
+    assert matrix[iron_row][press_col] == pytest.approx(-2.0)
+
+
+def test_build_exchange_matrix_shape():
+    g, _, _ = two_process_graph()
+    result = g.build_exchange_matrix()
+    matrix = np.array(result["matrix"])
+    assert matrix.shape == (len(result["pools"]), len(result["processes"]))
+
+
+def test_build_exchange_matrix_keys():
+    g, _, _ = two_process_graph()
+    result = g.build_exchange_matrix()
     assert "matrix" in result
     assert "processes" in result
     assert "pools" in result

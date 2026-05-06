@@ -6,6 +6,8 @@ from cytoolz import curry
 from .process import describe_process
 from .process import Ingredients
 from .process import Process
+from .process import BatchProcess
+from .process import ContinuousProcess
 from .augment import Augments
 
 
@@ -355,7 +357,9 @@ def specs_from_lines(lines):
         yield spec
 
 
-def process_from_spec_dict(spec):
+def process_from_spec_dict(spec, process_class=None):
+    if process_class is None:
+        process_class = BatchProcess
     inputs = (
         Ingredients.parse(spec["inputs"]) if spec.get("inputs") else Ingredients.zero()
     )
@@ -369,11 +373,13 @@ def process_from_spec_dict(spec):
     _excluded = {"inputs", "outputs", "annotations", "augment_block", "inline_augments"}
     kwargs = {k: v for (k, v) in spec.items() if k not in _excluded}
 
-    return Process(outputs=outputs, inputs=inputs, annotations=annotations, **kwargs)
+    return process_class(outputs=outputs, inputs=inputs, annotations=annotations, **kwargs)
 
 
-def parse_processes(lines):
-    return [process_from_spec_dict(spec) for spec in specs_from_lines(lines)]
+def parse_processes(lines, process_class=None):
+    if process_class is None:
+        process_class = BatchProcess
+    return [process_from_spec_dict(spec, process_class=process_class) for spec in specs_from_lines(lines)]
 
 
 def augment_specs_from_lines(lines):
@@ -434,9 +440,14 @@ def parse_augments(lines):
 
 class ProcessLibrary:
 
-    def __init__(self, recipes=None, text=None, path=None, augments=None):
+    def __init__(self, mode, recipes=None, text=None, path=None, augments=None):
         if text is not None and path is not None:
             raise ValueError("Provide either text or path, not both")
+        if mode not in ("batch", "continuous"):
+            raise ValueError(
+                f"mode must be 'batch' or 'continuous', got {mode!r}"
+            )
+        self.mode = mode
         self.recipes = recipes or {}
         self.names = set(recipes.keys()) if recipes else set()
         self._augments = {}
@@ -448,6 +459,10 @@ class ProcessLibrary:
                 self.add_from_text(f.read())
         elif text is not None:
             self.add_from_text(text)
+
+    @property
+    def process_class(self):
+        return BatchProcess if self.mode == "batch" else ContinuousProcess
 
     #
     # Add augments
@@ -469,7 +484,7 @@ class ProcessLibrary:
             else:
                 augment_seqs = spec.get("augment_block", [])
 
-            base = process_from_spec_dict(spec)
+            base = process_from_spec_dict(spec, process_class=self.process_class)
             base_name = self.mkname(base)
             self.recipes[base_name] = base
 
@@ -532,7 +547,7 @@ class ProcessLibrary:
             return True
 
         matching = {n: p for (n, p) in self.recipes.items() if _keep(p)}
-        result = ProcessLibrary(recipes=matching)
+        result = ProcessLibrary(self.mode, recipes=matching)
         result._augments = self._augments
         return result
 
@@ -543,7 +558,7 @@ class ProcessLibrary:
         The augment registry is preserved on the returned library.
         """
         matching = {n: p for (n, p) in self.recipes.items() if pred(p)}
-        result = ProcessLibrary(recipes=matching)
+        result = ProcessLibrary(self.mode, recipes=matching)
         result._augments = self._augments
         return result
 
@@ -551,8 +566,16 @@ class ProcessLibrary:
     filtered = filter
 
     def __or__(self, other):
-        """Merge two libraries. On name collision the right-hand library wins."""
+        """Merge two libraries. On name collision the right-hand library wins.
+
+        Raises ValueError if the two libraries have different modes.
+        """
+        if self.mode != other.mode:
+            raise ValueError(
+                f"Cannot merge libraries with different modes: "
+                f"'{self.mode}' vs '{other.mode}'"
+            )
         merged = {**self.recipes, **other.recipes}
-        result = ProcessLibrary(recipes=merged)
+        result = ProcessLibrary(self.mode, recipes=merged)
         result._augments = {**self._augments, **other._augments}
         return result

@@ -383,6 +383,38 @@ class GraphBuilder:
             "pools": pools,
         }
 
+    def build_exchange_matrix(self):
+        """Build the MILP matrix using each process's exchange property.
+
+        Works for both BatchProcess (exchange = transfer) and ContinuousProcess
+        (exchange = transfer_rate), replacing the separate build_batch_matrix
+        and build_matrix methods.
+        """
+        matrix = []
+
+        pool_items = list(self.pools.items())
+        pools = [p for (p, _) in pool_items]
+        process_items = list(self.processes.items())
+        processes = [p for (p, _) in process_items]
+
+        for pool_name, pool in pool_items:
+            kind = pool["kind"]
+            row = []
+
+            for process_name, process in process_items:
+                if process_name in pool["inputs"] or process_name in pool["outputs"]:
+                    row.append(process.exchange[kind])
+                else:
+                    row.append(0)
+
+            matrix.append(row)
+
+        return {
+            "matrix": matrix,
+            "processes": processes,
+            "pools": pools,
+        }
+
     def process_depths(self):
         terminal_edges = self.open_outputs
         input_processes = [process_name for (process_name, _) in terminal_edges]
