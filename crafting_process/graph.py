@@ -59,11 +59,18 @@ class GraphBuilder:
         for kind in shared_kinds:
             for output_process in outputs_by_kind[kind]:
                 for input_process in inputs_by_kind[kind]:
-                    new._connect_process_to_process(
-                        output_process,
-                        input_process,
-                        kind=kind,
-                    )
+                    try:
+                        new._connect_process_to_process(
+                            output_process,
+                            input_process,
+                            kind=kind,
+                        )
+                    except ValueError as err:
+                        if "Cannot connect process" in str(err):
+                            print(f"ERROR {other=} {kind=} {self.open_inputs=} {self.open_outputs=}")
+                            pass
+                        else:
+                            raise
                     # Explicitly remove the connected input from open_inputs.
                     # _connect_process_to_process normally does this via
                     # _from_pool, but union() shallow-copies pool dicts, so a
