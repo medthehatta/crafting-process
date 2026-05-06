@@ -2,8 +2,24 @@
 """Command-line interface for crafting-process plan()."""
 
 import argparse
+import importlib.util
+import inspect
 import sys
 import crafting_process as cp
+
+
+def _load_augments(path):
+    spec = importlib.util.spec_from_file_location("_augments", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return {
+        name: val
+        for name, val in vars(mod).items()
+        if not name.startswith("_")
+        and callable(val)
+        and not inspect.ismodule(val)
+        and not inspect.isclass(val)
+    }
 
 
 def main():
@@ -14,6 +30,10 @@ def main():
     parser.add_argument(
         "-r", "--recipes", default="recipes.txt", metavar="FILE",
         help="Recipe document to load (default: recipes.txt)"
+    )
+    parser.add_argument(
+        "-a", "--augment-file", metavar="FILE",
+        help="Python file whose public functions are loaded as augments"
     )
     parser.add_argument(
         "-m", "--mode", choices=["batch", "continuous"], default="batch",
@@ -57,7 +77,8 @@ def main():
     )
     args = parser.parse_args()
 
-    lib = cp.ProcessLibrary(args.mode, path=args.recipes)
+    augments = _load_augments(args.augment_file) if args.augment_file else {}
+    lib = cp.ProcessLibrary(args.mode, path=args.recipes, augments=augments)
     results = cp.plan(
         lib,
         args.yield_,
