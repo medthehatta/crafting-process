@@ -7,7 +7,7 @@ from cytoolz import unique
 from cytoolz import interleave
 
 from .graph import GraphBuilder
-from .process import Process, Ingredients, ContinuousProcess
+from .process import Process, Ingredients, BatchProcess, ContinuousProcess
 from .solver import best_milp_sequence
 from .utils import only as _only
 from .library import Pred
@@ -319,7 +319,7 @@ def _production_graphs(
         )
 
 
-def printable_analysis(aly, show_augments=False):
+def printable_analysis(aly, show_augments=False, show_type=False):
     out_lines = []
 
     first = next(iter(aly))
@@ -372,6 +372,11 @@ def printable_analysis(aly, show_augments=False):
                 augs = a.process_augments.get(pc.slug, [])
                 if augs:
                     label += " " + " ".join(f"@{aug}" for aug in augs)
+            if show_type and pc.process is not None:
+                if isinstance(pc.process, ContinuousProcess):
+                    label += f" [continuous, dur: {pc.process.duration}]"
+                elif isinstance(pc.process, BatchProcess):
+                    label += " [batch]"
             out_lines.append(f"    {pc.count}x {label}")
 
         out_lines.append("")
