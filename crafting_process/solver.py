@@ -36,7 +36,7 @@ def solve_milp(dense, keys, max_leak=0):
 
 
 def best_milp_sequence(matrix, keys):
-    max_leak = 10000
+    max_leak = 1e12
     last = None
 
     try:

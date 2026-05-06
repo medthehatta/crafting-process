@@ -1,3 +1,4 @@
+import heapq
 import itertools
 from dataclasses import dataclass
 from pprint import pprint
@@ -49,25 +50,30 @@ class R:
         return Pred(PlanResultPredicates.max_leak(threshold))
 
 
-def plan(library, transfer, *, num_keep=100, **production_graphs_kwargs):
-    """Run the full pipeline and return the top n PlanResults.
+def plan(library, transfer, *, num_keep=5, sort_key=None, reverse=False, **production_graphs_kwargs):
+    """Run the full pipeline and return the top num_keep PlanResults.
 
     transfer can be a string ("10 iron plate") or an Ingredients instance.
-    Results are ranked by (leak, total_processes) ascending — lower is better.
+    sort_key is a callable that takes a PlanResult and returns a comparable
+    value; lower values rank higher (ascending order).  Defaults to
+    (leak, total_processes).
+    reverse=True returns the num_keep results with the highest key values instead.
     """
+    if sort_key is None:
+        sort_key = lambda r: (r.leak, r.total_processes)
     if isinstance(transfer, str):
         transfer = Ingredients.parse(transfer)
     graphs = list(production_graphs(library, transfer, **production_graphs_kwargs))
-    results = list(analyze_graphs(graphs, num_keep=num_keep))
-    results.sort(key=lambda r: (r.leak, r.total_processes))
-    return results
+    results = analyze_graphs(graphs)
+    selector = heapq.nlargest if reverse else heapq.nsmallest
+    return selector(num_keep, results, key=sort_key)
 
 
-def analyze_graphs(graphs, num_keep=4):
-    return interleave(analyze_graph(g, num_keep=num_keep) for g in graphs)
+def analyze_graphs(graphs):
+    return interleave(analyze_graph(g) for g in graphs)
 
 
-def analyze_graph(graph, num_keep=4):
+def analyze_graph(graph):
     # Get the output node so we can figure out what was being asked for
     output_process_name = _only(
         name for (name, kind) in graph.open_outputs if kind == "_"
@@ -79,13 +85,7 @@ def analyze_graph(graph, num_keep=4):
 
     output_depths = graph.output_depths()
 
-    if len(milps) > num_keep:
-        head = num_keep - 2
-        relevant = milps[:head] + milps[-2:]
-    else:
-        relevant = milps
-
-    for m in relevant:
+    for m in milps:
         total_processes = sum(c for (c, _, _) in m["counts"])
         count_by_process = {name: count for (count, _, name) in m["counts"]}
         dangling = graph.open_outputs + graph.open_inputs

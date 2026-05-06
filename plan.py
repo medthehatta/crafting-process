@@ -22,6 +22,13 @@ def _load_augments(path):
     }
 
 
+KNOWN_SORT_KEYS = {
+    "min-leak-processes": None,  # plan() default: (leak, total_processes)
+    "min-leak": lambda r: r.leak,
+    "min-processes": lambda r: r.total_processes,
+}
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Find production plans for a desired yield."
@@ -42,6 +49,14 @@ def main():
     parser.add_argument(
         "-n", "--num-keep", type=int, default=5, metavar="N",
         help="Number of plans to return (default: 5)"
+    )
+    parser.add_argument(
+        "-k", "--sort-key", choices=list(KNOWN_SORT_KEYS), default="min-leak-processes",
+        help="Ranking criterion (default: min-leak-processes)"
+    )
+    parser.add_argument(
+        "--reverse", action="store_true",
+        help="Return the num-keep worst plans instead of the best"
     )
     parser.add_argument(
         "-P", "--skip-process", dest="skip_processes", action="append",
@@ -83,6 +98,8 @@ def main():
         lib,
         args.yield_,
         num_keep=args.num_keep,
+        sort_key=KNOWN_SORT_KEYS[args.sort_key],
+        reverse=args.reverse,
         skip_processes=args.skip_processes or None,
         skip_augments=args.skip_augments or None,
         only_augments=args.only_augments or None,
