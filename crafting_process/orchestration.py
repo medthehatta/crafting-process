@@ -1,6 +1,6 @@
 import heapq
 import itertools
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pprint import pprint
 from math import ceil
 
@@ -32,6 +32,7 @@ class PlanResult:
     process_counts: list  # list[ProcessCount]
     output_quantities: dict
     process_augments: dict
+    graph: object = field(default=None, hash=False, compare=False)
 
 
 class PlanResultPredicates:
@@ -131,6 +132,7 @@ def analyze_graph(graph):
             process_counts=process_counts,
             output_quantities=output_quantities,
             process_augments=process_augments,
+            graph=graph,
         )
 
 
@@ -382,3 +384,125 @@ def printable_analysis(aly, show_augments=False, show_type=False):
         out_lines.append("")
 
     return "\n".join(out_lines)
+
+
+def printable_graph(result):
+    """ASCII tree of the dependency graph for a single PlanResult.
+
+    Output is rooted at the desired resource; leaves are raw inputs.
+    Nodes already printed once are shown with '(see above)'.
+    """
+    graph = result.graph
+    if graph is None:
+        return "(no graph data available)"
+
+    pc_by_slug = {pc.slug: pc for pc in result.process_counts}
+
+    # downstream_slug -> [upstream_slug, ...]
+    edges = {}
+    for pool in graph.pools.values():
+        for downstream in pool["outputs"]:
+            for upstream in pool["inputs"]:
+                edges.setdefault(downstream, []).append(upstream)
+
+    # process_slug -> [raw resource kind, ...]
+    open_inputs_by_proc = {}
+    for proc_name, kind in graph.open_inputs:
+        open_inputs_by_proc.setdefault(proc_name, []).append(kind)
+
+    output_process_name = _only(
+        name for (name, kind) in graph.open_outputs if kind == "_"
+    )
+
+    seen = set()
+
+    def _subtree(slug, prefix, is_last):
+        connector = "└─ " if is_last else "├─ "
+        child_prefix = prefix + ("   " if is_last else "│  ")
+        pc = pc_by_slug.get(slug)
+        if pc and pc.description != "_":
+            label = f"{pc.count}x {pc.description}"
+        else:
+            label = slug
+
+        if slug in seen:
+            return [f"{prefix}{connector}{label} (see above)"]
+
+        seen.add(slug)
+        node_lines = [f"{prefix}{connector}{label}"]
+
+        upstream = edges.get(slug, [])
+        raw = sorted(open_inputs_by_proc.get(slug, []))
+        children = [("proc", s) for s in upstream] + [("raw", k) for k in raw]
+
+        for j, (ctype, cval) in enumerate(children):
+            child_is_last = j == len(children) - 1
+            if ctype == "proc":
+                node_lines.extend(_subtree(cval, child_prefix, child_is_last))
+            else:
+                cc = "└─ " if child_is_last else "├─ "
+                node_lines.append(f"{child_prefix}{cc}[raw] {cval}")
+
+        return node_lines
+
+    lines = [str(result.desired)]
+    roots = edges.get(output_process_name, [])
+    for i, root in enumerate(roots):
+        lines.extend(_subtree(root, "", i == len(roots) - 1))
+
+    return "\n".join(lines)
+
+
+def printable_dot(result):
+    """Graphviz DOT description of a single PlanResult's dependency graph.
+
+    Process-to-process edges only (no intermediate resource pool nodes).
+    Raw inputs are shown as dashed boxes. Pipe to: dot -Tsvg > graph.svg
+    """
+    graph = result.graph
+    if graph is None:
+        return "// (no graph data available)"
+
+    pc_by_slug = {pc.slug: pc for pc in result.process_counts}
+
+    output_process_name = _only(
+        name for (name, kind) in graph.open_outputs if kind == "_"
+    )
+
+    open_inputs_by_proc = {}
+    for proc_name, kind in graph.open_inputs:
+        open_inputs_by_proc.setdefault(proc_name, []).append(kind)
+    raw_kinds = sorted({k for kinds in open_inputs_by_proc.values() for k in kinds})
+
+    def _esc(s):
+        return s.replace("\\", "\\\\").replace('"', '\\"')
+
+    lines = ["digraph {", "    rankdir=LR;"]
+
+    for kind in raw_kinds:
+        lines.append(f'    "{_esc(kind)}" [shape=box, style=dashed, label="{_esc(kind)} (raw)"];')
+
+    for slug in graph.processes:
+        if slug == output_process_name:
+            continue
+        pc = pc_by_slug.get(slug)
+        if pc and pc.description != "_":
+            label = f"{pc.count}x {_esc(pc.description)}"
+        else:
+            label = _esc(slug)
+        lines.append(f'    "{_esc(slug)}" [label="{label}"];')
+
+    lines.append(f'    "output" [shape=box, label="{_esc(str(result.desired))}"];')
+
+    for pool in graph.pools.values():
+        for upstream in pool["inputs"]:
+            for downstream in pool["outputs"]:
+                target = "output" if downstream == output_process_name else _esc(downstream)
+                lines.append(f'    "{_esc(upstream)}" -> "{target}";')
+
+    for proc_name, kinds in open_inputs_by_proc.items():
+        for kind in kinds:
+            lines.append(f'    "{_esc(kind)}" -> "{_esc(proc_name)}";')
+
+    lines.append("}")
+    return "\n".join(lines)

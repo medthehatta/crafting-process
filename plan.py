@@ -78,7 +78,7 @@ def main():
         help="Maximum process overlap in graph expansion (default: 2)"
     )
     parser.add_argument(
-        "--stop-kind", dest="stop_kinds", action="append",
+        "-K", "--stop-kind", dest="stop_kinds", action="append",
         default=[], metavar="KIND",
         help="Treat this resource kind as a terminal input (repeatable)"
     )
@@ -89,6 +89,14 @@ def main():
     parser.add_argument(
         "--show-type", action="store_true",
         help="Show process type (batch/continuous) next to each process"
+    )
+    parser.add_argument(
+        "--graph", action="store_true",
+        help="Show ASCII dependency tree after the summary for each result"
+    )
+    parser.add_argument(
+        "--dot", action="store_true",
+        help="Output Graphviz DOT format for each result (suppresses summary; pipe to dot -Tsvg)"
     )
     args = parser.parse_args()
 
@@ -111,11 +119,23 @@ def main():
         print("No plans found.", file=sys.stderr)
         sys.exit(1)
 
-    print(cp.printable_analysis(
-        iter(results),
-        show_augments=args.show_augments,
-        show_type=args.show_type,
-    ))
+    if args.dot:
+        for i, r in enumerate(results, start=1):
+            print(f"// Plan {i}: {r.desired}, leak={r.leak}")
+            print(cp.printable_dot(r))
+            if i < len(results):
+                print()
+    else:
+        print(cp.printable_analysis(
+            iter(results),
+            show_augments=args.show_augments,
+            show_type=args.show_type,
+        ))
+        if args.graph:
+            for i, r in enumerate(results, start=1):
+                print(f"--- Graph for plan {i} ---")
+                print(cp.printable_graph(r))
+                print()
 
 
 if __name__ == "__main__":
