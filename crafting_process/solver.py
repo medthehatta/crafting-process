@@ -8,7 +8,7 @@ def solve_milp(dense, keys, max_leak=0):
     c = np.ones(len(keys))
     A = np.array(dense)
     b_u = max_leak * np.ones(len(dense))
-    b_l = np.zeros(len(dense))
+    b_l = -max_leak * np.ones(len(dense))
 
     constraints = LinearConstraint(A, b_l, b_u)
     integrality = np.ones_like(c)
@@ -37,17 +37,17 @@ def solve_milp(dense, keys, max_leak=0):
 
 def best_milp_sequence(matrix, keys):
     max_leak = 1e12
-    last = None
+    last_answer = None
 
     try:
         soln = solve_milp(matrix, keys, max_leak=max_leak)
     except ValueError:
         return
     else:
-        last = soln["result"].x
+        last_answer = soln["answer"]
         leaks = matrix @ soln["result"].x
-        actual_leak = max(leaks)
-        max_leak = 0.9 * actual_leak
+        actual_leak = max(leaks, key=abs)
+        max_leak = 0.9 * abs(actual_leak)
         yield (actual_leak, soln["answer"])
 
     while True:
@@ -56,10 +56,10 @@ def best_milp_sequence(matrix, keys):
         except ValueError:
             return
         else:
-            if (soln["result"].x == last).all():
+            if soln["answer"] == last_answer:
                 return
-            last = soln["result"].x
+            last_answer = soln["answer"]
             leaks = matrix @ soln["result"].x
-            actual_leak = max(leaks)
-            max_leak = 0.9 * actual_leak
+            actual_leak = max(leaks, key=abs)
+            max_leak = 0.9 * abs(actual_leak)
             yield (actual_leak, soln["answer"])

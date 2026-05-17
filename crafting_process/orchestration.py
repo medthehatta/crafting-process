@@ -61,7 +61,7 @@ def plan(library, transfer, *, num_keep=5, sort_key=None, reverse=False, **produ
     reverse=True returns the num_keep results with the highest key values instead.
     """
     if sort_key is None:
-        sort_key = lambda r: (r.leak, r.total_processes)
+        sort_key = lambda r: (abs(r.leak), r.total_processes)
     if isinstance(transfer, str):
         transfer = Ingredients.parse(transfer)
     graphs = list(production_graphs(library, transfer, **production_graphs_kwargs))
@@ -345,7 +345,7 @@ def printable_analysis(aly, show_augments=False, show_type=False):
                 amt_str = str(int(actual)) if int(actual) == actual else f"{actual:.2f}"
                 yield_parts.append(f"{amt_str} {kind}")
                 wanted = a.desired[kind]
-                if actual != wanted:
+                if actual < wanted:
                     w_str = (
                         str(int(wanted)) if int(wanted) == wanted else f"{wanted:.2f}"
                     )

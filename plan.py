@@ -24,7 +24,7 @@ def _load_augments(path):
 
 KNOWN_SORT_KEYS = {
     "min-leak-processes": None,  # plan() default: (leak, total_processes)
-    "min-leak": lambda r: r.leak,
+    "min-leak": lambda r: abs(r.leak),
     "min-processes": lambda r: r.total_processes,
 }
 
