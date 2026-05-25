@@ -321,18 +321,19 @@ def _production_graphs(
         )
 
 
-def printable_analysis(aly, show_augments=False, show_type=False):
+def printable_analysis(aly, show_augments=False, show_type=False, show_header=True, start=1):
     out_lines = []
 
     first = next(iter(aly))
     desired = first.desired
     w = len(str(desired))
-    out_lines.append("#" * (10 + w))
-    out_lines.append(f"#    {desired}    #")
-    out_lines.append("#" * (10 + w))
-    out_lines.append("")
+    if show_header:
+        out_lines.append("#" * (10 + w))
+        out_lines.append(f"#    {desired}    #")
+        out_lines.append("#" * (10 + w))
+        out_lines.append("")
 
-    for i, a in enumerate(itertools.chain([first], aly), start=1):
+    for i, a in enumerate(itertools.chain([first], aly), start=start):
         tot = a.total_processes - 1
         tot_s = "1 process" if tot == 1 else f"{tot} processes"
         out_lines.append(f"{i}) {tot_s}, {a.leak} leak")

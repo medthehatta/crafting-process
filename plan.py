@@ -126,13 +126,28 @@ def main():
             if i < len(results):
                 print()
     else:
-        print(cp.printable_analysis(
-            iter(results),
-            show_augments=args.show_augments,
-            show_type=args.show_type,
-        ))
-        if args.graph:
+        if not args.graph:
+            print(cp.printable_analysis(
+                iter(results),
+                show_augments=args.show_augments,
+                show_type=args.show_type,
+            ))
+        else:
+            first = results[0]
+            desired = first.desired
+            w = len(str(desired))
+            print("#" * (10 + w))
+            print(f"#    {desired}    #")
+            print("#" * (10 + w))
+            print()
             for i, r in enumerate(results, start=1):
+                print(cp.printable_analysis(
+                    iter([r]),
+                    show_augments=args.show_augments,
+                    show_type=args.show_type,
+                    show_header=False,
+                    start=i,
+                ), end="")
                 print(f"--- Graph for plan {i} ---")
                 print(cp.printable_graph(r))
                 print()
