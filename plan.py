@@ -28,6 +28,10 @@ KNOWN_SORT_KEYS = {
     "min-processes": lambda r: r.total_processes,
 }
 
+KNOWN_FILTERS = {
+    "no-leak": lambda r: r.leak == 0,
+}
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -91,6 +95,11 @@ def main():
         help="Show process type (batch/continuous) next to each process"
     )
     parser.add_argument(
+        "--filter", dest="filters", action="append",
+        default=[], choices=list(KNOWN_FILTERS), metavar="FILTER",
+        help=f"Admit only results passing this filter (repeatable). Choices: {', '.join(KNOWN_FILTERS)}"
+    )
+    parser.add_argument(
         "--graph", action="store_true",
         help="Show ASCII dependency tree after the summary for each result"
     )
@@ -114,6 +123,10 @@ def main():
         max_overlap=args.max_overlap,
         stop_kinds=args.stop_kinds or None,
     )
+
+    for name in args.filters:
+        pred = KNOWN_FILTERS[name]
+        results = [r for r in results if pred(r)]
 
     if not results:
         print("No plans found.", file=sys.stderr)

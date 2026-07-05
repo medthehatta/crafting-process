@@ -1,6 +1,7 @@
 from .process import Ingredients, Process, BatchProcess, ContinuousProcess, describe_process
 from .library import ProcessLibrary, P, Pred
 from .augment import Augments
+from .attainment import attainable, library_kinds, AttainmentResult
 from .orchestration import (
     plan,
     production_graphs,
@@ -27,6 +28,9 @@ __all__ = [
     "P",
     "Pred",
     "Augments",
+    "attainable",
+    "library_kinds",
+    "AttainmentResult",
     "plan",
     "production_graphs",
     "analyze_graph",
