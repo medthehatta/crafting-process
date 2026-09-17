@@ -4,6 +4,7 @@ import pytest
 
 from crafting_process.orchestration import (
     input_combinations,
+    apply_preferences,
     batch_milps,
     exchange_milps,
     production_graphs,
@@ -13,7 +14,7 @@ from crafting_process.orchestration import (
     PlanResult,
 )
 from crafting_process.graph import GraphBuilder
-from crafting_process.library import ProcessLibrary
+from crafting_process.library import ProcessLibrary, P
 from crafting_process.process import Ingredients, Process, BatchProcess
 
 # ---------------------------------------------------------------------------
@@ -31,6 +32,23 @@ def linear_library():
 
         1 widget | press
         2 iron
+    """)
+    return lib
+
+
+@pytest.fixture
+def vendor_ahe_library():
+    """widget producible via vendor, ahe, or mining — a three-way branch point."""
+    lib = ProcessLibrary("batch")
+    lib.add_from_text("""
+        1 widget | vendor
+        1 gold
+
+        1 widget | ahe
+        1 gold
+
+        1 widget | mining
+        1 pick
     """)
     return lib
 
@@ -238,6 +256,108 @@ def test_production_graphs_skip_processes_excludes_process(linear_library):
     )
     descriptions = {p.describe() for p in g.processes.values()}
     assert not any("iron" in d for d in descriptions)
+
+
+# ---------------------------------------------------------------------------
+# apply_preferences
+# ---------------------------------------------------------------------------
+
+
+def _named(name):
+    return (name, BatchProcess(outputs=Ingredients.parse("1 widget"), process=name))
+
+
+def test_apply_preferences_narrows_to_most_preferred():
+    producers = [_named("vendor"), _named("ahe")]
+    preference = [P.process_is("vendor"), P.process_is("ahe")]
+    result = apply_preferences(producers, [preference])
+    assert [name for (name, _) in result] == ["vendor"]
+
+
+def test_apply_preferences_falls_back_when_preferred_absent():
+    # vendor isn't available; ahe is next in priority, so it wins. mining is
+    # outside the rule's scope entirely and is left untouched.
+    producers = [_named("ahe"), _named("mining")]
+    preference = [P.process_is("vendor"), P.process_is("ahe")]
+    result = apply_preferences(producers, [preference])
+    assert {name for (name, _) in result} == {"ahe", "mining"}
+
+
+def test_apply_preferences_no_match_leaves_producers_unchanged():
+    # Neither vendor nor ahe is present, so the rule doesn't apply at all
+    producers = [_named("mining")]
+    preference = [P.process_is("vendor"), P.process_is("ahe")]
+    result = apply_preferences(producers, [preference])
+    assert [name for (name, _) in result] == ["mining"]
+
+
+def test_apply_preferences_empty_preferences_is_noop():
+    producers = [_named("vendor"), _named("ahe")]
+    result = apply_preferences(producers, [])
+    assert result == producers
+
+
+def test_apply_preferences_leaves_unrelated_alternative_untouched():
+    # jewelcrafting is a third, unrelated way to produce the same kind (mirrors
+    # the real "sunglass vial: ahe | vendor | jewelcrafting" case in wowind's
+    # recipes). The vendor/ahe rule has no opinion about it and must not
+    # remove it, even though vendor beats ahe within its own scope.
+    producers = [_named("vendor"), _named("ahe"), _named("jewelcrafting")]
+    preference = [P.process_is("vendor"), P.process_is("ahe")]
+    result = apply_preferences(producers, [preference])
+    assert {name for (name, _) in result} == {"vendor", "jewelcrafting"}
+
+
+def test_apply_preferences_multiple_rules_apply_independently():
+    producers = [_named("vendor"), _named("ahe"), _named("mining"), _named("jewelcrafting")]
+    rules = [
+        [P.process_is("vendor"), P.process_is("ahe")],
+        [P.process_is("jewelcrafting"), P.process_is("mining")],
+    ]
+    result = apply_preferences(producers, rules)
+    assert {name for (name, _) in result} == {"vendor", "jewelcrafting"}
+
+
+def test_production_graphs_preferences_excludes_only_contested_process(vendor_ahe_library):
+    graphs = list(
+        production_graphs(
+            vendor_ahe_library,
+            Ingredients.parse("1 widget"),
+            preferences=[[P.process_is("vendor"), P.process_is("ahe")]],
+        )
+    )
+    all_descriptions = [{p.describe() for p in g.processes.values()} for g in graphs]
+
+    # ahe loses to vendor and never appears in any candidate graph
+    assert not any("via ahe" in d for descs in all_descriptions for d in descs)
+    # vendor wins the contested vendor/ahe branch point
+    assert any(any("via vendor" in d for d in descs) for descs in all_descriptions)
+    # mining is outside the rule's scope and remains a valid alternative
+    assert any(any("via mining" in d for d in descs) for descs in all_descriptions)
+
+
+def test_production_graphs_preferences_falls_back_to_available_process():
+    # Only ahe and mining are on offer; vendor is preferred but absent, so the
+    # vendor/ahe rule falls back to ahe. mining is untouched (outside the
+    # rule's scope) and remains valid in its own right.
+    lib = ProcessLibrary("batch")
+    lib.add_from_text("""
+        1 widget | ahe
+        1 gold
+
+        1 widget | mining
+        1 pick
+    """)
+    graphs = list(
+        production_graphs(
+            lib,
+            Ingredients.parse("1 widget"),
+            preferences=[[P.process_is("vendor"), P.process_is("ahe")]],
+        )
+    )
+    all_descriptions = [{p.describe() for p in g.processes.values()} for g in graphs]
+    assert any(any("via ahe" in d for d in descs) for descs in all_descriptions)
+    assert any(any("via mining" in d for d in descs) for descs in all_descriptions)
 
 
 # ---------------------------------------------------------------------------

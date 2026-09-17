@@ -170,6 +170,37 @@ def exchange_milps(graph):
     ]
 
 
+def apply_preferences(producers, preferences):
+    """Narrow producers down to the most-preferred alternatives at a branch point.
+
+    producers is a list of (name, process) pairs all producing the same kind.
+    preferences is a list of preference rules; each rule is an ordered list of
+    predicates (Process -> bool), most-preferred first, naming a specific set of
+    mutually-exclusive alternatives (e.g. "vendor" vs "ahe").
+
+    For each rule: the "contested" subset of producers is whichever ones match
+    ANY predicate in the rule. If nothing is contested (none of the rule's
+    predicates match anything present), the rule doesn't apply here and
+    producers pass through unchanged. Otherwise, the first predicate (in
+    priority order) that matches part of the contested subset wins, and the
+    contested subset is narrowed to just its matches — producers outside the
+    contested subset (alternatives the rule has no opinion about, like
+    "jewelcrafting") are left untouched rather than being discarded.
+    """
+    for rule in preferences or []:
+        contested = [item for item in producers if any(pred(item[1]) for pred in rule)]
+        if not contested:
+            continue
+        for pred in rule:
+            matched = [item for item in contested if pred(item[1])]
+            if matched:
+                winners = matched
+                break
+        uncontested = [item for item in producers if item not in contested]
+        producers = uncontested + winners
+    return producers
+
+
 def input_combinations(input_kinds, kind_providers, max_overlap=2):
     if max_overlap < 1:
         raise ValueError("max_overlap must be >= 1")
@@ -213,6 +244,7 @@ def production_graphs(
     skip_processes=None,
     skip_augments=None,
     only_augments=None,
+    preferences=None,
 ):
     if skip_augments or only_augments is not None:
         recipes = recipes.with_augment_filter(
@@ -229,6 +261,7 @@ def production_graphs(
         max_overlap=max_overlap,
         stop_kinds=stop_kinds,
         skip_processes=skip_processes,
+        preferences=preferences,
     )
 
 
@@ -238,10 +271,12 @@ def _production_graphs(
     max_overlap=2,
     stop_kinds=None,
     skip_processes=None,
+    preferences=None,
     visited=None,
 ):
     skip_processes = skip_processes or []
     stop_kinds = stop_kinds or []
+    preferences = preferences or []
     visited = visited if visited is not None else {}
 
     desired_kinds = set(
@@ -256,6 +291,7 @@ def _production_graphs(
             for (name, proc) in recipes.producing(kind)
             if proc.process not in skip_processes
         ]
+        producers = apply_preferences(producers, preferences)
         if producers:
             input_recipes.extend(producers)
             recursable_kinds.append(kind)
@@ -317,6 +353,7 @@ def _production_graphs(
             max_overlap=max_overlap,
             stop_kinds=stop_kinds,
             skip_processes=skip_processes,
+            preferences=preferences,
             visited=new_visited,
         )
 

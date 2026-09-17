@@ -360,19 +360,47 @@ for such chains — do not reintroduce it.
 Creates a **sink process**: `outputs={"_": 1}`, `inputs=transfer` (the desired
 resource). The sink is the anchor of the graph. Then calls `_production_graphs`.
 
-### `_production_graphs(recipes, consuming_graph, ..., visited=None)`
+### `_production_graphs(recipes, consuming_graph, ..., preferences=None, visited=None)`
 
 Recursive graph builder. For each open input kind not in `stop_kinds`:
 1. Finds all producers via `recipes.producing(kind)`, filtering by `skip_processes`
    and the `visited` set of already-committed library names (loop detection).
-2. **Deduplicates** `input_recipes` by library name before indexing — a process
+2. Applies `apply_preferences(producers, preferences)` — a **greedy, per-kind**
+   narrowing pass (see below), distinct from the hard `skip_processes` filter.
+3. **Deduplicates** `input_recipes` by library name before indexing — a process
    that satisfies multiple desired kinds would otherwise appear once per kind,
    generating degenerate combos that instantiate the same process twice.
-3. Calls `input_combinations` to enumerate covering subsets.
-4. For each combo: builds `upstream_graph`, calls `output_into(consuming_graph)`,
+4. Calls `input_combinations` to enumerate covering subsets.
+5. For each combo: builds `upstream_graph`, calls `output_into(consuming_graph)`,
    passes `visited | {combo's library names}` to the recursive call.
-5. When no producers remain (all consumed or blocked by `visited`), yields the
+6. When no producers remain (all consumed or blocked by `visited`), yields the
    current graph — possibly with unsatisfied open inputs (raw materials).
+
+### `apply_preferences(producers, preferences)`
+
+Pure function implementing **soft, branch-point preferences** — as opposed to
+`skip_processes`/`stop_kinds`, which are hard exclusions applied before graph
+search even runs. `preferences` is a list of independent rules; each rule is an
+ordered list of predicates (`Process -> bool`, e.g. from the `P` namespace),
+most-preferred first, naming a specific set of mutually-exclusive alternatives
+(e.g. "prefer the `vendor` process over the `ahe` process").
+
+For each rule, only the **contested** subset of `producers` — those matching
+*any* predicate in the rule — is adjudicated: the highest-priority predicate
+that matches something in that subset wins, and the subset is narrowed to just
+its matches. Producers outside the contested subset (alternatives the rule has
+no opinion about, e.g. a third `jewelcrafting` process for the same output) are
+left untouched. A rule whose predicates match nothing present doesn't apply at
+all (falls through to whatever's actually available) — this is what makes it a
+*preference* rather than a hard filter: "prefer vendor over ahe, but if only
+ahe is on offer, use it."
+
+Threaded through `production_graphs` → `_production_graphs`, applied once per
+recursion for each open input kind (the natural branch point where alternative
+producers of the same resource are being considered). `plan.py`'s
+`--prefer-process PROC1,PROC2,...` flag builds one rule per occurrence from
+`P.process_is` predicates over the comma-separated, priority-ordered process
+names.
 
 ### `input_combinations(input_kinds, kind_providers, max_overlap=2)`
 
@@ -391,7 +419,7 @@ High-level convenience entry point. Accepts a string or `Ingredients` for
 `transfer`. Runs `production_graphs`, solves MILP on each, ranks by
 `(leak, total_processes)` ascending, and returns the top `n` results as a
 concrete list. All `production_graphs` kwargs (`stop_kinds`, `skip_processes`,
-`only_augments`, etc.) are forwarded.
+`only_augments`, `preferences`, etc.) are forwarded.
 
 ```python
 import crafting_process as cp

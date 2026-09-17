@@ -87,6 +87,16 @@ def main():
         help="Treat this resource kind as a terminal input (repeatable)"
     )
     parser.add_argument(
+        "--prefer-process", dest="preferences", action="append",
+        default=[], metavar="PROC1,PROC2,...",
+        help=(
+            "At each branch point, prefer PROC1 over PROC2 over ... when more "
+            "than one is available to produce the same resource; falls back to "
+            "whichever of these is actually available (repeatable for independent "
+            "preference rules)"
+        )
+    )
+    parser.add_argument(
         "--show-augments", action="store_true",
         help="Show applied augments next to each process"
     )
@@ -111,6 +121,10 @@ def main():
 
     augments = _load_augments(args.augment_file) if args.augment_file else {}
     lib = cp.ProcessLibrary(args.mode, path=args.recipes, augments=augments)
+    preferences = [
+        [cp.P.process_is(name.strip()) for name in rule.split(",")]
+        for rule in args.preferences
+    ]
     results = cp.plan(
         lib,
         args.yield_,
@@ -122,6 +136,7 @@ def main():
         only_augments=args.only_augments or None,
         max_overlap=args.max_overlap,
         stop_kinds=args.stop_kinds or None,
+        preferences=preferences or None,
     )
 
     for name in args.filters:
