@@ -205,7 +205,7 @@ wheels = [
 [[package]]
 name = "crafting-process"
 version = "0.8.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "coolname" },
     { name = "cytoolz" },
@@ -228,7 +228,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "coolname", specifier = ">=2.2.0" },
-    { name = "crafting-process", virtual = "." },
+    { name = "crafting-process", editable = "." },
     { name = "cytoolz", specifier = ">=1.0.0" },
     { name = "fastapi", specifier = ">=0.115.5" },
     { name = "formal-vector", git = "https://github.com/medthehatta/formal-vector" },
